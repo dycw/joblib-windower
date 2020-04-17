@@ -20,7 +20,9 @@ T = TypeVar("T")
     "window, expected", [(1, arange(5)), (2, array([0.0, 0.5, 1.5, 2.5, 3.5]))],
 )
 @mark.parametrize("min_frac", [None, 0.5])
-def test_window_1_and_2(window: int, min_frac: Optional[float], expected: ndarray) -> None:
+def test_window_1_and_2_returning_float(
+    window: int, min_frac: Optional[float], expected: ndarray,
+) -> None:
     @windower
     def mean(x: ndarray) -> float:
         return x.mean()
@@ -31,7 +33,7 @@ def test_window_1_and_2(window: int, min_frac: Optional[float], expected: ndarra
 
 
 @mark.parametrize("min_frac", [None, 0.5])
-def test_window_3(min_frac: Optional[float]) -> None:
+def test_window_3_returning_float(min_frac: Optional[float]) -> None:
     @windower
     def mean(x: ndarray) -> float:
         return x.mean()
@@ -40,4 +42,25 @@ def test_window_3(min_frac: Optional[float]) -> None:
     assert_array_equal(
         mean(x=arange(5), window=3, min_frac=min_frac, n_jobs=None),
         array([first, 0.5, 1.0, 2.0, 3.0]),
+    )
+
+
+@mark.parametrize("min_frac", [None, 0.5])
+def test_window_3_returning_1D_array(min_frac: Optional[float]) -> None:
+    @windower
+    def mean(x: ndarray) -> ndarray:
+        return array([x.min(), x.mean(), x.max()])
+
+    first = 0.0 if min_frac is None else nan
+    assert_array_equal(
+        mean(x=arange(5), window=3, min_frac=min_frac, n_jobs=None),
+        array(
+            [
+                [first, first, first],
+                [0.0, 0.5, 1.0],
+                [0.0, 1.0, 2.0],
+                [1.0, 2.0, 3.0],
+                [2.0, 3.0, 4.0],
+            ],
+        ),
     )
