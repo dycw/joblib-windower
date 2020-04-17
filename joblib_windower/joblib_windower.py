@@ -19,11 +19,9 @@ from functional_itertools import CList
 from joblib import delayed
 from joblib import Parallel
 from numpy import array
-from numpy import issubdtype
 from numpy import memmap
 from numpy import nan
 from numpy import ndarray
-from numpy import number
 
 
 _CPU_COUNT = cpu_count()
@@ -56,8 +54,6 @@ def _maybe_slice(x: Any, *, slice_: slice) -> Any:
 
 def _maybe_memmap(x: Any, path: Union[Path, str]) -> Any:
     if isinstance(x, ndarray):
-        if not issubdtype(x.dtype, number):
-            raise ValueError(f"Expected 'float' dtype; got {x.dtype}")
         with atomic_write_path(path) as temp:
             joblib.dump(x, temp)
         return joblib.load(path, mmap_mode="r")
@@ -67,7 +63,7 @@ def _maybe_memmap(x: Any, path: Union[Path, str]) -> Any:
 
 def windower(func: Callable[..., Union[float, ndarray]]) -> Callable[..., Union[float, ndarray]]:
     @wraps(func)
-    def decorated(
+    def wrapped(
         *args: Any,
         window: int,
         min_frac: Optional[float] = None,
@@ -86,7 +82,7 @@ def windower(func: Callable[..., Union[float, ndarray]]) -> Callable[..., Union[
                 .starmap(lambda i, v: _maybe_memmap(v, td.joinpath(f"arg_{i}")))
             )
             new_kwargs: CDict[str, Any] = CDict(kwargs).map_items(
-                lambda k, v: _maybe_memmap(v, td.joinpath(f"kwarg_{k}")),
+                lambda k, v: (k, _maybe_memmap(v, td.joinpath(f"kwarg_{k}"))),
             )
             length = (
                 new_args.chain(new_kwargs.values())
@@ -113,11 +109,12 @@ def windower(func: Callable[..., Union[float, ndarray]]) -> Callable[..., Union[
             if last_slice is None:
                 raise ValueError("Expected the last element to be a slice")
             last_result = applies_slice(*new_args, slice_=last_slice, **new_kwargs)
+            last_array = array(last_result)
             output = memmap(
                 filename=str(td.joinpath("output")),
-                dtype=float,
+                dtype=last_array.dtype,
                 mode="w+",
-                shape=tuple(chain([length], last_result.shape)),
+                shape=tuple(chain([length], last_array.shape)),
             )
             Parallel(n_jobs=n_jobs)(
                 delayed(_writes_output(applies_slice))(
@@ -133,4 +130,4 @@ def windower(func: Callable[..., Union[float, ndarray]]) -> Callable[..., Union[
         out_array[-1] = last_result
         return out_array
 
-    return decorated
+    return wrapped
