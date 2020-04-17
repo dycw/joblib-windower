@@ -1,0 +1,28 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v2.5.0
+    hooks:
+      - id: check-executables-have-shebangs
+      - id: check-merge-conflict
+      - id: check-json
+      - id: check-toml
+      - id: check-xml
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: no-commit-to-branch
+      - id: pretty-format-json
+      - id: trailing-whitespace
+
+  - repo: https://github.com/dycw/pre-commit-hooks
+    rev: 1.0.36
+    hooks:
+      - id: add-trailing-comma
+      - id: autoflake
+      - id: black
+      - id: pyupgrade
+      - id: reorder-python-imports
+      - id: yesqa
+      - id: dead
+      - id: flake8

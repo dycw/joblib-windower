@@ -1,0 +1,60 @@
+# https://github.com/pascalgn/automerge-action
+name: automerge
+
+on:
+  pull_request:
+    types:
+      - labeled
+      - unlabeled
+      - synchronize
+      - opened
+      - edited
+      - ready_for_review
+      - reopened
+      - unlocked
+  pull_request_review:
+    types:
+      - submitted
+  check_suite:
+    types:
+      - completed
+  status: {}
+
+jobs:
+  automerge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: automerge
+        uses: "pascalgn/automerge-action@master"
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          MERGE_LABELS: ""
+          MERGE_METHOD: "squash"
+          MERGE_RETRIES: "100"
+          MERGE_RETRY_SLEEP: "10000"
+
+  tag:
+    needs: [automerge]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: butlerlogic/action-autotag@stable
+        with:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          root: "setup.cfg"
+          regex_pattern: 'current_version = ([0-9]+\.[0-9]+\.[0-9]+)'
+
+  publish:
+    needs: [automerge]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v1
+        with:
+          python-version: 3.x
+      - run: |
+          pip install wheel
+          python setup.py sdist bdist_wheel
+      - uses: pypa/gh-action-pypi-publish@master
+        with:
+          password: ${{ secrets.pypi_password }}
