@@ -44,15 +44,21 @@ def test_window_3(min_frac: Optional[float]) -> None:
     )
 
 
+@mark.parametrize(
+    "window, expected",
+    [(1, array(["A", "B", "C", "D", "E"])), (2, array(["A", "AB", "BC", "CD", "DE"]))],
+)
 @mark.parametrize("min_frac", [None, 0.5])
-def test_returning_non_float(min_frac: Optional[float]) -> None:
+def test_returning_non_float(window: int, min_frac: Optional[float], expected: ndarray) -> None:
     @windower
     def get_letter(x: ndarray) -> str:
-        return ascii_uppercase[int(x)]
+        try:
+            return ascii_uppercase[int(x)]
+        except TypeError:
+            return "".join([ascii_uppercase[i] for i in x])
 
     assert_array_equal(
-        get_letter(x=arange(5), window=1, min_frac=min_frac, n_jobs=None),
-        array(["A", "B", "C", "D", "E"]),
+        get_letter(x=arange(5), window=window, min_frac=min_frac, n_jobs=None), expected,
     )
 
 
@@ -75,23 +81,3 @@ def test_returning_1D_array(min_frac: Optional[float]) -> None:
             ],
         ),
     )
-
-
-# def test_passing_list() -> None:
-#     @windower
-#     def mean(x: ndarray) -> ndarray:
-#         return array([x.min(), x.mean(), x.max()],dtype=str)
-#
-#     first = 0.0 if min_frac is None else nan
-#     assert_array_equal(
-#         mean(x=arange(5), window=3, min_frac=min_frac, n_jobs=None),
-#         array(
-#             [
-#                 [first, first, first],
-#                 [0.0, 0.5, 1.0],
-#                 [0.0, 1.0, 2.0],
-#                 [1.0, 2.0, 3.0],
-#                 [2.0, 3.0, 4.0],
-#             ],
-#         ),
-#     )

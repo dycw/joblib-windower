@@ -19,11 +19,9 @@ from functional_itertools import CList
 from joblib import delayed
 from joblib import Parallel
 from numpy import array
-from numpy import issubdtype
 from numpy import memmap
 from numpy import nan
 from numpy import ndarray
-from numpy import number
 
 
 _CPU_COUNT = cpu_count()
@@ -56,8 +54,6 @@ def _maybe_slice(x: Any, *, slice_: slice) -> Any:
 
 def _maybe_memmap(x: Any, path: Union[Path, str]) -> Any:
     if isinstance(x, ndarray):
-        if not issubdtype(x.dtype, number):
-            raise ValueError(f"Expected 'float' dtype; got {x.dtype}")
         with atomic_write_path(path) as temp:
             joblib.dump(x, temp)
         return joblib.load(path, mmap_mode="r")
