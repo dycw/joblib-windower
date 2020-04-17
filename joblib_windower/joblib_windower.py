@@ -67,7 +67,7 @@ def _maybe_memmap(x: Any, path: Union[Path, str]) -> Any:
 
 def windower(func: Callable[..., Union[float, ndarray]]) -> Callable[..., Union[float, ndarray]]:
     @wraps(func)
-    def decorated(
+    def wrapped(
         *args: Any,
         window: int,
         min_frac: Optional[float] = None,
@@ -86,7 +86,7 @@ def windower(func: Callable[..., Union[float, ndarray]]) -> Callable[..., Union[
                 .starmap(lambda i, v: _maybe_memmap(v, td.joinpath(f"arg_{i}")))
             )
             new_kwargs: CDict[str, Any] = CDict(kwargs).map_items(
-                lambda k, v: _maybe_memmap(v, td.joinpath(f"kwarg_{k}")),
+                lambda k, v: (k, _maybe_memmap(v, td.joinpath(f"kwarg_{k}"))),
             )
             length = (
                 new_args.chain(new_kwargs.values())
@@ -133,4 +133,4 @@ def windower(func: Callable[..., Union[float, ndarray]]) -> Callable[..., Union[
         out_array[-1] = last_result
         return out_array
 
-    return decorated
+    return wrapped
