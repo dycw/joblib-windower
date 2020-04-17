@@ -30,24 +30,24 @@ T = TypeVar("T")
 
 def _writes_output(func: Callable[..., Any]) -> Callable[..., None]:
     @wraps(func)
-    def wrapped(*args: Any, output: ndarray, index: int, **kwargs: Any) -> None:
-        output[index] = func(*args, **kwargs)
+    def wrapped(*args: Any, _output: ndarray, _index: int, **kwargs: Any) -> None:
+        _output[_index] = func(*args, **kwargs)
 
     return wrapped
 
 
 def _applies_slice(func: Callable[..., T]) -> Callable[..., T]:
     @wraps(func)
-    def wrapped(*args: Any, slice_: slice, **kwargs: Any) -> T:
-        applier = partial(_maybe_slice, slice_=slice_)
+    def wrapped(*args: Any, _indexer: Union[int, slice], **kwargs: Any) -> T:
+        applier = partial(_maybe_slice, indexer=_indexer)
         return func(*CList(args).map(applier), **CDict(kwargs).map_values(applier))
 
     return wrapped
 
 
-def _maybe_slice(x: Any, *, slice_: slice) -> Any:
+def _maybe_slice(x: Any, *, indexer: Union[int, slice]) -> Any:
     if isinstance(x, memmap):
-        return x[slice_]
+        return x[indexer]
     else:
         return x
 
@@ -65,11 +65,14 @@ def windower(func: Callable[..., Union[float, ndarray]]) -> Callable[..., Union[
     @wraps(func)
     def wrapped(
         *args: Any,
-        window: int,
+        window: int = 1,
         min_frac: Optional[float] = None,
         n_jobs: int = _CPU_COUNT,
         **kwargs: Any,
     ) -> ndarray:
+        if window <= 0:
+            raise ValueError(f"Expected window to be positive; got {window}")
+
         applies_slice = _applies_slice(func)
 
         with TemporaryDirectory() as td:
@@ -94,21 +97,26 @@ def windower(func: Callable[..., Union[float, ndarray]]) -> Callable[..., Union[
             if length == 0:
                 raise ValueError("Expected non-zero length")
 
-            # create slices
-            slices = CList.range(1, length + 1).map(lambda x: slice(max(x - window, 0), x))
-            if min_frac is None:
-                maybe_slices: CList[Optional[slice]] = slices
+            # create indexers
+            if window == 1:
+                indexers: CList[int] = CList.range(length)
             else:
-                min_length = min_frac * window
-                maybe_slices = slices.map(
-                    lambda x: x if (x.stop - x.start) >= min_length else None,
+                indexers: CList[Optional[slice]] = CList.range(1, length + 1).map(
+                    lambda x: slice(max(x - window, 0), x),
                 )
+                if min_frac is None:
+                    indexers: CList[Optional[slice]] = indexers
+                else:
+                    min_length = min_frac * window
+                    indexers = indexers.map(
+                        lambda x: x if (x.stop - x.start) >= min_length else None,
+                    )
 
             # compute last slice
-            *_, last_slice = maybe_slices
-            if last_slice is None:
-                raise ValueError("Expected the last element to be a slice")
-            last_result = applies_slice(*new_args, slice_=last_slice, **new_kwargs)
+            *_, last_indexer = indexers
+            if last_indexer is None:
+                raise ValueError("Expected the last indexer to be a slice")
+            last_result = applies_slice(*new_args, _indexer=last_indexer, **new_kwargs)
             last_array = array(last_result)
             output = memmap(
                 filename=str(td.joinpath("output")),
@@ -118,13 +126,13 @@ def windower(func: Callable[..., Union[float, ndarray]]) -> Callable[..., Union[
             )
             Parallel(n_jobs=n_jobs)(
                 delayed(_writes_output(applies_slice))(
-                    *new_args, slice_=maybe_slice, output=output, index=index, **new_kwargs,
+                    *new_args, _indexer=indexer, _output=output, _index=index, **new_kwargs,
                 )
-                for index, maybe_slice in enumerate(maybe_slices)
-                if maybe_slice not in [None, last_slice]
+                for index, indexer in enumerate(indexers)
+                if indexer not in [None, last_indexer]
             )
         out_array = array(output)
-        for i, maybe_slice in enumerate(maybe_slices):
+        for i, maybe_slice in enumerate(indexers):
             if maybe_slice is None:
                 out_array[i] = nan
         out_array[-1] = last_result
