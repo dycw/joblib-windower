@@ -113,11 +113,12 @@ def windower(func: Callable[..., Union[float, ndarray]]) -> Callable[..., Union[
             if last_slice is None:
                 raise ValueError("Expected the last element to be a slice")
             last_result = applies_slice(*new_args, slice_=last_slice, **new_kwargs)
+            last_array = array(last_result)
             output = memmap(
                 filename=str(td.joinpath("output")),
-                dtype=float,
+                dtype=last_array.dtype,
                 mode="w+",
-                shape=tuple(chain([length], last_result.shape)),
+                shape=tuple(chain([length], last_array.shape)),
             )
             Parallel(n_jobs=n_jobs)(
                 delayed(_writes_output(applies_slice))(
