@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from string import ascii_uppercase
 from typing import Optional
-from typing import TypeVar
 
 from numpy import arange
 from numpy import array
@@ -12,9 +11,6 @@ from numpy.testing import assert_array_equal
 from pytest import mark
 
 from joblib_windower import windower
-
-
-T = TypeVar("T")
 
 
 @mark.parametrize(
