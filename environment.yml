@@ -1,0 +1,9 @@
+name: joblib-windower
+
+dependencies:
+  - python=3.7.*
+  - bump2version
+  - pre-commit
+  - pip
+  - pip:
+      - --requirement=requirements/test.txt
