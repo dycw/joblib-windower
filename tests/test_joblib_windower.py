@@ -32,11 +32,41 @@ def test_1D_to_float(window: int, min_frac: Optional[float], expected: ndarray) 
             assert isinstance(x, int64)
         elif window == 2:
             assert x.shape in [(1,), (2,)]
+        elif window == 3:
+            assert x.shape in [(1,), (2,), (3,)]
 
         return x.mean()
 
     assert_array_equal(
         mean(arange(5), window=window, min_frac=min_frac), expected,
+    )
+
+
+@mark.parametrize(
+    "window, min_frac, expected",
+    [
+        (1, None, array([1.5, 5.5, 9.5, 13.5, 17.5])),
+        (1, 0.5, array([1.5, 5.5, 9.5, 13.5, 17.5])),
+        (2, None, array([1.5, 3.5, 7.5, 11.5, 15.5])),
+        (2, 0.5, array([1.5, 3.5, 7.5, 11.5, 15.5])),
+        (3, None, array([1.5, 3.5, 5.5, 9.5, 13.5])),
+        (3, 0.5, array([nan, 3.5, 5.5, 9.5, 13.5])),
+    ],
+)
+def test_2D_to_float(window: int, min_frac: Optional[float], expected: ndarray) -> None:
+    @windower
+    def mean(x: ndarray) -> float:
+        if window == 1:
+            assert x.shape == (4,)
+        elif window == 2:
+            assert x.shape in [(1, 4), (2, 4)]
+        elif window == 3:
+            assert x.shape in [(1, 4), (2, 4), (3, 4)]
+
+        return x.mean()
+
+    assert_array_equal(
+        mean(arange(20).reshape((5, 4)), window=window, min_frac=min_frac), expected,
     )
 
 
