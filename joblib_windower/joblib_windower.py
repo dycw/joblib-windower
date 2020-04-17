@@ -30,8 +30,8 @@ T = TypeVar("T")
 
 def _writes_output(func: Callable[..., Any]) -> Callable[..., None]:
     @wraps(func)
-    def wrapped(*args: Any, output: ndarray, index: int, **kwargs: Any) -> None:
-        output[index] = func(*args, **kwargs)
+    def wrapped(*args: Any, _output: ndarray, _index: int, **kwargs: Any) -> None:
+        _output[_index] = func(*args, **kwargs)
 
     return wrapped
 
@@ -126,7 +126,7 @@ def windower(func: Callable[..., Union[float, ndarray]]) -> Callable[..., Union[
             )
             Parallel(n_jobs=n_jobs)(
                 delayed(_writes_output(applies_slice))(
-                    *new_args, _indexer=indexer, output=output, index=index, **new_kwargs,
+                    *new_args, _indexer=indexer, _output=output, _index=index, **new_kwargs,
                 )
                 for index, indexer in enumerate(indexers)
                 if indexer not in [None, last_indexer]
