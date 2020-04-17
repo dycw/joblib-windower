@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from string import ascii_uppercase
 from typing import Optional
 from typing import Union
@@ -39,7 +40,7 @@ def test_1D_to_float(window: int, min_frac: Optional[float], expected: ndarray) 
         return x.mean()
 
     assert_array_equal(
-        mean(arange(5), window=window, min_frac=min_frac), expected,
+        mean(arange(5), window=window, min_frac=min_frac, n_jobs=None), expected,
     )
 
 
@@ -67,7 +68,7 @@ def test_2D_to_float(window: int, min_frac: Optional[float], expected: ndarray) 
         return x.mean()
 
     assert_array_equal(
-        mean(arange(20).reshape((5, 4)), window=window, min_frac=min_frac), expected,
+        mean(arange(20).reshape((5, 4)), window=window, min_frac=min_frac, n_jobs=None), expected,
     )
 
 
@@ -196,4 +197,14 @@ def test_returning_non_float(window: int, min_frac: Optional[float], expected: n
 
     assert_array_equal(
         get_text(x=arange(5), window=window, min_frac=min_frac, n_jobs=None), expected,
+    )
+
+
+def test_custom_temp_dir(tmp_path: Path) -> None:
+    @windower(temp_dir=tmp_path)
+    def mean(x: ndarray) -> float:
+        return x.mean()
+
+    assert_array_equal(
+        mean(arange(5), window=2, n_jobs=None), array([0.0, 0.5, 1.5, 2.5, 3.5]),
     )
