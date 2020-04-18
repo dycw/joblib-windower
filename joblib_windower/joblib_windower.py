@@ -85,7 +85,7 @@ def windower(
                 raise ValueError(f"Expected window to be positive; got {window}")
 
             applies_slice = _applies_slice(func)
-
+            Path(temp_dir).mkdir(parents=True, exist_ok=True)
             with TemporaryDirectory(dir=temp_dir) as td:
                 td = Path(td)
 
