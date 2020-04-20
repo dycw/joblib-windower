@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from string import ascii_uppercase
 from typing import Any
 from typing import Callable
@@ -258,4 +259,27 @@ def test_2D_to_1D(
             **kwargs,
         ),
         transform(expected),
+    )
+
+
+@mark.parametrize(
+    "windower, transform, asserter",
+    [
+        (ndarray_windower, to_numpy, assert_array_equal),
+        (ndframe_windower, identity, assert_series_equal),
+    ],
+)
+def test_custom_temp_dir(
+    windower: Any,
+    transform: Callable[[Any], Any],
+    asserter: Callable[[Any, Any], None],
+    tmp_path: Path,
+) -> None:
+    @windower(temp_dir=tmp_path)
+    def mean(x: Union[ndarray, Series]) -> float:
+        return x.mean()
+
+    asserter(
+        mean(transform(Series(arange(5), index=INDEX)), window=2, n_jobs=None),
+        transform(Series([0.0, 0.5, 1.5, 2.5, 3.5], index=INDEX)),
     )
