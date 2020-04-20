@@ -59,8 +59,7 @@ def _maybe_to_pandas(value: Any, index: Any, columns: Optional[Index]) -> Any:
                 return DataFrame(value, index=index, columns=columns)
         else:
             if columns is None:
-                raise NotImplementedError()
-                return Series(value, index=index)
+                raise NotImplementedError("Unexpected case")
             else:
                 return Series(value, index=columns, name=index)
     else:
