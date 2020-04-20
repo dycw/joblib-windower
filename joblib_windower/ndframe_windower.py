@@ -64,7 +64,7 @@ def _maybe_to_pandas(value: Any, index: Any, columns: Optional[Index]) -> Any:
 
 
 def _build_internal(
-    temp_dir: Union[Path, str] = TEMP_DIR,
+    *, temp_dir: Union[Path, str] = TEMP_DIR,
 ) -> Callable[..., Union[Series, DataFrame]]:
     @ndarray_windower(temp_dir=temp_dir)
     def internal(
@@ -104,7 +104,6 @@ def _build_ndframe_windower(
     func: Optional[Callable[..., Union[float, Series]]] = None,
     *,
     temp_dir: Union[Path, str] = TEMP_DIR,
-    columns: Optional[Iterable[Hashable]] = None,
 ) -> Callable[..., Union[Series, DataFrame]]:
     @wraps(func)
     def wrapped(
@@ -112,6 +111,7 @@ def _build_ndframe_windower(
         window: int = 1,
         min_frac: Optional[float] = None,
         n_jobs: int = CPU_COUNT,
+        columns: Optional[Iterable[Hashable]] = None,
         **kwargs: Any,
     ) -> Union[Series, DataFrame]:
         args, kwargs = CList(args), CDict(kwargs)
@@ -147,7 +147,7 @@ def _build_ndframe_windower(
         except ValueError:
             maybe_numpy_kwargs = maybe_index_kwargs = maybe_columns_kwargs = CDict()
 
-        result = _build_internal(temp_dir)(
+        result = _build_internal(temp_dir=temp_dir)(
             *maybe_numpy_args.zip(maybe_index_args).flatten(),
             _func=func,
             _maybe_columns_args=maybe_columns_args,
@@ -188,9 +188,8 @@ def ndframe_windower(
     func: Optional[Callable[..., Union[float, ndarray]]] = None,
     *,
     temp_dir: Union[Path, str] = TEMP_DIR,
-    columns: Optional[Iterable[Hashable]] = None,
 ) -> Callable[..., Union[Series, DataFrame]]:
     if func is None:
-        return partial(ndframe_windower, temp_dir=temp_dir, columns=columns)
+        return partial(ndframe_windower, temp_dir=temp_dir)
     else:
-        return _build_ndframe_windower(func, temp_dir=temp_dir, columns=columns)
+        return _build_ndframe_windower(func, temp_dir=temp_dir)
