@@ -263,6 +263,52 @@ def test_2D_to_1D(
 
 
 @mark.parametrize(
+    "window, min_frac, expected",
+    [
+        (1, None, Series(["A", "B", "C", "D", "E"], index=INDEX)),
+        (1, 0.5, Series(["A", "B", "C", "D", "E"], index=INDEX)),
+        (2, None, Series(["A", "AB", "BC", "CD", "DE"], index=INDEX)),
+        (2, 0.5, Series(["A", "AB", "BC", "CD", "DE"], index=INDEX)),
+        (3, None, Series(["A", "AB", "ABC", "BCD", "CDE"], index=INDEX)),
+        (3, 0.5, Series(["nan", "AB", "ABC", "BCD", "CDE"], index=INDEX)),
+    ],
+)
+@mark.parametrize(
+    "windower, transform, asserter",
+    [
+        (ndarray_windower, to_numpy, assert_array_equal),
+        (ndframe_windower, identity, assert_series_equal),
+    ],
+)
+def test_returning_non_float(
+    window: int,
+    min_frac: Optional[float],
+    expected: ndarray,
+    windower: Any,
+    transform: Callable[[Any], Any],
+    asserter: Callable[[Any, Any], None],
+) -> None:
+    @windower
+    def get_text(x: Union[int64, ndarray, Series]) -> str:
+        if isinstance(x, int64):
+            return ascii_uppercase[int(x)]
+        elif isinstance(x, (ndarray, Series)):
+            return "".join([ascii_uppercase[i] for i in x])
+        else:
+            raise TypeError(x)
+
+    asserter(
+        get_text(
+            x=transform(Series(arange(5), index=INDEX)),
+            window=window,
+            min_frac=min_frac,
+            n_jobs=None,
+        ),
+        transform(expected),
+    )
+
+
+@mark.parametrize(
     "windower, transform, asserter",
     [
         (ndarray_windower, to_numpy, assert_array_equal),
