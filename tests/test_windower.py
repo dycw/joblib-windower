@@ -11,6 +11,7 @@ from typing import Union
 
 from numpy import arange
 from numpy import array
+from numpy import float64
 from numpy import int64
 from numpy import nan
 from numpy import ndarray
@@ -25,6 +26,7 @@ from joblib_windower import ndarray_windower
 from joblib_windower import ndframe_windower
 from joblib_windower.ndframe_windower import to_numpy
 
+
 INDEX = list(ascii_uppercase[:5])
 COLUMNS = list(ascii_uppercase[-4:])
 MMM_COLUMNS = ["min", "mean", "max"]
@@ -38,8 +40,8 @@ def identity(x: T) -> T:
 @mark.parametrize(
     "window, min_frac, expected",
     [
-        (1, None, Series(arange(5), index=INDEX)),
-        (1, 0.5, Series(arange(5), index=INDEX)),
+        (1, None, Series(arange(5.0), index=INDEX)),
+        (1, 0.5, Series(arange(5.0), index=INDEX)),
         (2, None, Series([0.0, 0.5, 1.5, 2.5, 3.5], index=INDEX)),
         (2, 0.5, Series([0.0, 0.5, 1.5, 2.5, 3.5], index=INDEX)),
         (3, None, Series([0.0, 0.5, 1.0, 2.0, 3.0], index=INDEX)),
@@ -62,8 +64,8 @@ def test_1D_to_float(
     asserter: Callable[[Any, Any], None],
 ) -> None:
     @windower
-    def mean(x: Union[int64, ndarray, Series]) -> float:
-        if isinstance(x, int64):
+    def mean(x: Union[float64, ndarray, Series]) -> float:
+        if isinstance(x, float64):
             return x
         elif isinstance(x, (ndarray, Series)):
             return x.mean()
@@ -72,7 +74,7 @@ def test_1D_to_float(
 
     asserter(
         mean(
-            x=transform(Series(arange(5), index=INDEX)),
+            x=transform(Series(arange(5.0), index=INDEX)),
             window=window,
             min_frac=min_frac,
             n_jobs=None,
@@ -118,7 +120,7 @@ def test_2D_to_float(
 
     asserter(
         mean(
-            transform(DataFrame(arange(20).reshape((5, 4)), index=INDEX, columns=COLUMNS)),
+            transform(DataFrame(arange(20.0).reshape((5, 4)), index=INDEX, columns=COLUMNS)),
             window=window,
             min_frac=min_frac,
             n_jobs=None,
@@ -252,7 +254,7 @@ def test_2D_to_1D(
 
     asserter(
         summary(
-            x=transform(DataFrame(arange(20).reshape((5, 4)), index=INDEX, columns=COLUMNS)),
+            x=transform(DataFrame(arange(20.0).reshape((5, 4)), index=INDEX, columns=COLUMNS)),
             window=window,
             min_frac=min_frac,
             n_jobs=None,
@@ -291,7 +293,7 @@ def test_returning_non_float(
     @windower
     def get_text(x: Union[int64, ndarray, Series]) -> str:
         if isinstance(x, int64):
-            return ascii_uppercase[int(x)]
+            return ascii_uppercase[x]
         elif isinstance(x, (ndarray, Series)):
             return "".join([ascii_uppercase[i] for i in x])
         else:
@@ -326,6 +328,6 @@ def test_custom_temp_dir(
         return x.mean()
 
     asserter(
-        mean(transform(Series(arange(5), index=INDEX)), window=2, n_jobs=None),
+        mean(transform(Series(arange(5.0), index=INDEX)), window=2, n_jobs=None),
         transform(Series([0.0, 0.5, 1.5, 2.5, 3.5], index=INDEX)),
     )
