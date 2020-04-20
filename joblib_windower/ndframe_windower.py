@@ -9,7 +9,6 @@ from typing import Dict
 from typing import Hashable
 from typing import Iterable
 from typing import Optional
-from typing import Set
 from typing import Tuple
 from typing import Union
 
@@ -43,49 +42,47 @@ def _maybe_to_numpy(x: Any) -> Tuple[Any, Optional[ndarray], Optional[Index]]:
         return x, None, None
 
 
-def _maybe_to_pandas(
-    i: Union[int, str], x: Any, *, transforms: Set[Union[int, str]], index: Index,
-) -> Any:
-    if i in transforms:
-        return Series(x, index=index)
-    else:
-        return x
-
-
-@ndarray_windower
-def internal(
-    *args: Tuple[Any, Optional[Index], Optional[Index]],
-    _func: Callable[..., Union[float, Series]],
-    _maybe_columns_args: Tuple[Optional[Index], ...],
-    _maybe_columns_kwargs: Dict[str, Optional[Index]],
-    **kwargs: Tuple[Any, Optional[Index], Optional[Index]],
-) -> Union[Series, DataFrame]:
-    # maybe_to_pandas = partial(_maybe_to_pandas, _maybe_columns_args=_maybe_columns_args, index=_index)
-    # new_args: CList[Any] = CList(args).enumerate().starmap(maybe_to_pandas)
-    # new_kwargs: CDict[str, Any] = CDict(kwargs).map_items(lambda k, v: (k, maybe_to_pandas(k, v)))
-    new_args = []
-    if args:
-        raise ValueError()
-        breakpoint()
-
-    new_kwargs = {}
-    while kwargs:
-        key = next(iter(kwargs))
-        try:
-            value, index = kwargs.pop(key), kwargs.pop(f"_{key}")
-        except KeyError:
-            key = key[1:]
-            value, index = kwargs.pop(key), kwargs.pop(f"_{key}")
-        if isinstance(value, ndarray):
-            columns = _maybe_columns_kwargs[key]
-            if columns is None:
-                new_kwargs[key] = Series(value, index=index)
-            else:
-                new_kwargs[key] = DataFrame(value, index=index, columns=columns)
+def _maybe_to_pandas(value: Any, index: Optional[ndarray], columns: Optional[Index]) -> Any:
+    if isinstance(value, ndarray) or index is None:
+        if columns is None:
+            return Series(value, index=index)
         else:
-            new_kwargs[key] = value
+            return DataFrame(value, index=index, columns=columns)
+    else:
+        return value
 
-    return _func(*new_args, **new_kwargs)
+def _build_internal(temp_dir:Union[Path,str]=TEMP_DIR):
+    @ndarray_windower(temp_dir=temp_dir)
+    def internal(
+        *args: Tuple[Any, Optional[Index], Optional[Index]],
+        _func: Callable[..., Union[float, Series]],
+        _maybe_columns_args: Tuple[Optional[Index], ...],
+        _maybe_columns_kwargs: Dict[str, Optional[Index]],
+        **kwargs: Tuple[Any, Optional[Index], Optional[Index]],
+    ) -> Union[Series, DataFrame]:
+        new_args = CList()
+        args, _maybe_columns_args = list(args), list(_maybe_columns_args)
+        while args:
+            new_args.append(
+                _maybe_to_pandas(
+                    value=args.pop(0), index=args.pop(0), columns=_maybe_columns_args.pop(0),
+                ),
+            )
+
+        new_kwargs = CDict()
+        while kwargs:
+            key = next(iter(kwargs))
+            try:
+                value, index = kwargs.pop(key), kwargs.pop(f"_{key}")
+            except KeyError:
+                key = key[1:]
+                value, index = kwargs.pop(key), kwargs.pop(f"_{key}")
+            new_kwargs[key] = _maybe_to_pandas(
+                value=value, index=index, columns=_maybe_columns_kwargs[key],
+            )
+
+        return _func(*new_args, **new_kwargs)
+    return internal
 
 
 def _build_ndframe_windower(
@@ -123,9 +120,8 @@ def _build_ndframe_windower(
         except ValueError:
             maybe_numpy_kwargs = maybe_index_kwargs = maybe_columns_kwargs = CDict()
 
-        result = internal(
-            *maybe_numpy_args,
-            *maybe_index_args,
+        result = _build_internal(temp_dir)(
+            *maybe_numpy_args.zip(maybe_index_args).flatten(),
             _func=func,
             _maybe_columns_args=maybe_columns_args,
             _maybe_columns_kwargs=maybe_columns_kwargs,
@@ -142,6 +138,8 @@ def _build_ndframe_windower(
         index, *_ = indices
         if result.ndim == 1:
             return Series(result, index=index)
+        elif result.ndim==2:
+            return DataFrame
 
     return wrapped
 
