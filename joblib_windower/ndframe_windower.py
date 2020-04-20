@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from functools import partial
 from functools import wraps
+from operator import attrgetter
 from pathlib import Path
 from typing import Any
 from typing import Callable
@@ -18,6 +19,7 @@ from numpy import ndarray
 from pandas import DataFrame
 from pandas import Index
 from pandas import Series
+from pandas._testing import assert_index_equal
 
 from joblib_windower import ndarray_windower
 from joblib_windower.errors import NonPositiveWindowError
@@ -42,16 +44,28 @@ def _maybe_to_numpy(x: Any) -> Tuple[Any, Optional[ndarray], Optional[Index]]:
         return x, None, None
 
 
-def _maybe_to_pandas(value: Any, index: Optional[ndarray], columns: Optional[Index]) -> Any:
-    if isinstance(value, ndarray) or index is None:
-        if columns is None:
-            return Series(value, index=index)
+def _maybe_to_pandas(value: Any, index: Any, columns: Optional[Index]) -> Any:
+    if isinstance(value, ndarray):
+        if index is None:
+            raise ValueError("Expected ndarrays to come with indices")
+        elif isinstance(index, ndarray):
+            if columns is None:
+                return Series(value, index=index)
+            else:
+                return DataFrame(value, index=index, columns=columns)
         else:
-            return DataFrame(value, index=index, columns=columns)
+            if columns is None:
+                raise NotImplementedError()
+                return Series(value, index=index)
+            else:
+                return Series(value, index=columns, name=index)
     else:
         return value
 
-def _build_internal(temp_dir:Union[Path,str]=TEMP_DIR):
+
+def _build_internal(
+    temp_dir: Union[Path, str] = TEMP_DIR,
+) -> Callable[..., Union[Series, DataFrame]]:
     @ndarray_windower(temp_dir=temp_dir)
     def internal(
         *args: Tuple[Any, Optional[Index], Optional[Index]],
@@ -82,6 +96,7 @@ def _build_internal(temp_dir:Union[Path,str]=TEMP_DIR):
             )
 
         return _func(*new_args, **new_kwargs)
+
     return internal
 
 
@@ -99,11 +114,23 @@ def _build_ndframe_windower(
         n_jobs: int = CPU_COUNT,
         **kwargs: Any,
     ) -> Union[Series, DataFrame]:
-        args = CList(args)
-        kwargs = CDict(kwargs)
+        args, kwargs = CList(args), CDict(kwargs)
+
+        # check for existence of and get unique index
+        indices = (
+            args.chain(kwargs.values())
+            .filter(lambda x: isinstance(x, (Series, DataFrame)))
+            .map(attrgetter("index"))
+        )
+        if not indices:
+            raise ValueError("Expected at least 1 Series or DataFrame; got none")
+        for index1, index2 in indices.combinations(2):
+            assert_index_equal(index1, index2)
+        index, *_ = indices
         if window <= 0:
             raise NonPositiveWindowError(f"Got window = {window}")
 
+        # maybe decompose arguments
         try:
             maybe_numpy_args, maybe_index_args, maybe_columns_args = args.map(
                 _maybe_to_numpy,
@@ -131,15 +158,28 @@ def _build_ndframe_windower(
             **maybe_numpy_kwargs,
             **maybe_index_kwargs.map_keys(lambda x: f"_{x}"),
         )
-        assert isinstance(result, ndarray)
-
-        indices = maybe_index_args.chain(maybe_index_kwargs.values())
-        assert indices
-        index, *_ = indices
         if result.ndim == 1:
             return Series(result, index=index)
-        elif result.ndim==2:
-            return DataFrame
+        elif result.ndim == 2:
+            if columns is None:
+                df_columns = (
+                    args.chain(kwargs.values())
+                    .filter(lambda x: isinstance(x, DataFrame))
+                    .map(attrgetter("columns"))
+                )
+                if df_columns:
+                    try:
+                        for columns1, columns2 in df_columns.combinations(2):
+                            assert_index_equal(columns1, columns2)
+                    except AssertionError:
+                        df_columns_use = None
+                    else:
+                        df_columns_use, *_ = df_columns
+                else:
+                    df_columns_use = None
+            else:
+                df_columns_use = columns
+            return DataFrame(result, index=index, columns=df_columns_use)
 
     return wrapped
 
