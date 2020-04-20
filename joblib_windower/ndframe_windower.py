@@ -64,17 +64,24 @@ def internal(
     # new_args: CList[Any] = CList(args).enumerate().starmap(maybe_to_pandas)
     # new_kwargs: CDict[str, Any] = CDict(kwargs).map_items(lambda k, v: (k, maybe_to_pandas(k, v)))
     new_args = []
+    if args:
+        raise ValueError()
+        breakpoint()
 
     new_kwargs = {}
     while kwargs:
         key = next(iter(kwargs))
         try:
-            value, index_ = kwargs.pop(key), kwargs.pop(f"_{key}")
+            value, index = kwargs.pop(key), kwargs.pop(f"_{key}")
         except KeyError:
             key = key[1:]
-            value, index_ = kwargs.pop(key), kwargs.pop(f"_{key}")
+            value, index = kwargs.pop(key), kwargs.pop(f"_{key}")
         if isinstance(value, ndarray):
-            break
+            columns = _maybe_columns_kwargs[key]
+            if columns is None:
+                new_kwargs[key] = Series(value, index=index)
+            else:
+                new_kwargs[key] = DataFrame(value, index=index, columns=columns)
         else:
             new_kwargs[key] = value
 
