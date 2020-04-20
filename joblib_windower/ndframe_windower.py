@@ -19,7 +19,7 @@ from numpy import ndarray
 from pandas import DataFrame
 from pandas import Index
 from pandas import Series
-from pandas._testing import assert_index_equal
+from pandas.testing import assert_index_equal
 
 from joblib_windower import ndarray_windower
 from joblib_windower.errors import NonPositiveWindowError
@@ -27,8 +27,12 @@ from joblib_windower.ndarray_windower import CPU_COUNT
 from joblib_windower.ndarray_windower import TEMP_DIR
 
 
+def to_numpy(x: Union[Index, Series, DataFrame]) -> ndarray:
+    return x.to_numpy()
+
+
 def _index_to_numpy(x: Union[Series, DataFrame]) -> ndarray:
-    array = x.index.to_numpy()
+    array = to_numpy(x.index)
     try:
         return array.astype(str)
     except ValueError:
@@ -37,9 +41,9 @@ def _index_to_numpy(x: Union[Series, DataFrame]) -> ndarray:
 
 def _maybe_to_numpy(x: Any) -> Tuple[Any, Optional[ndarray], Optional[Index]]:
     if isinstance(x, Series):
-        return x.to_numpy(), _index_to_numpy(x), None
+        return to_numpy(x), _index_to_numpy(x), None
     elif isinstance(x, DataFrame):
-        return x.to_numpy(), _index_to_numpy(x), x.columns
+        return to_numpy(x), _index_to_numpy(x), x.columns
     else:
         return x, None, None
 
