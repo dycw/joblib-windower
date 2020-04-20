@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from joblib_windower.joblib_windower import windower
+from joblib_windower.ndarray_windower import ndarray_windower
+from joblib_windower.ndframe_windower import ndframe_windower
 
 
 __all__ = [
-    "windower",
+    "ndarray_windower",
+    "ndframe_windower",
 ]
 __version__ = "0.2.2"

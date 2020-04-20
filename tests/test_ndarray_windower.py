@@ -13,7 +13,7 @@ from numpy import ndarray
 from numpy.testing import assert_array_equal
 from pytest import mark
 
-from joblib_windower import windower
+from joblib_windower import ndarray_windower
 
 
 @mark.parametrize(
@@ -28,7 +28,7 @@ from joblib_windower import windower
     ],
 )
 def test_1D_to_float(window: int, min_frac: Optional[float], expected: ndarray) -> None:
-    @windower
+    @ndarray_windower
     def mean(x: Union[int64, ndarray]) -> float:
         if window == 1:
             assert isinstance(x, int64)
@@ -56,7 +56,7 @@ def test_1D_to_float(window: int, min_frac: Optional[float], expected: ndarray) 
     ],
 )
 def test_2D_to_float(window: int, min_frac: Optional[float], expected: ndarray) -> None:
-    @windower
+    @ndarray_windower
     def mean(x: ndarray) -> float:
         if window == 1:
             assert x.shape == (4,)
@@ -156,7 +156,7 @@ def test_2D_to_float(window: int, min_frac: Optional[float], expected: ndarray) 
     ],
 )
 def test_2D_to_1D(window: int, min_frac: Optional[float], expected: ndarray) -> None:
-    @windower
+    @ndarray_windower
     def summary(x: ndarray) -> ndarray:
         if window == 1:
             assert x.shape == (4,)
@@ -184,7 +184,7 @@ def test_2D_to_1D(window: int, min_frac: Optional[float], expected: ndarray) -> 
     ],
 )
 def test_returning_non_float(window: int, min_frac: Optional[float], expected: ndarray) -> None:
-    @windower
+    @ndarray_windower
     def get_text(x: Union[int64, ndarray]) -> str:
         if window == 1:
             assert isinstance(x, int64)
@@ -201,7 +201,7 @@ def test_returning_non_float(window: int, min_frac: Optional[float], expected: n
 
 
 def test_custom_temp_dir(tmp_path: Path) -> None:
-    @windower(temp_dir=tmp_path)
+    @ndarray_windower(temp_dir=tmp_path)
     def mean(x: ndarray) -> float:
         return x.mean()
 
