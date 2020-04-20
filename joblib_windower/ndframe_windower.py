@@ -66,9 +66,7 @@ def _maybe_to_pandas(value: Any, index: Any, columns: Optional[Index]) -> Any:
         return value
 
 
-def _build_internal(
-    *, temp_dir: Union[Path, str] = TEMP_DIR,
-) -> Callable[..., Union[Series, DataFrame]]:
+def _build_internal(*, temp_dir: Union[Path, str] = TEMP_DIR) -> Callable[..., ndarray]:
     @ndarray_windower(temp_dir=temp_dir)
     def internal(
         *args: Tuple[Any, Optional[Index], Optional[Index]],
@@ -76,9 +74,10 @@ def _build_internal(
         _maybe_columns_args: Tuple[Optional[Index], ...],
         _maybe_columns_kwargs: Dict[str, Optional[Index]],
         **kwargs: Tuple[Any, Optional[Index], Optional[Index]],
-    ) -> Union[Series, DataFrame]:
-        new_args = CList()
-        args, _maybe_columns_args = list(args), list(_maybe_columns_args)
+    ) -> Any:
+        # reassemble arguments
+        new_args: CList[Any] = CList()
+        args, _maybe_columns_args = CList(args), CList(_maybe_columns_args)
         while args:
             new_args.append(
                 _maybe_to_pandas(
@@ -86,7 +85,7 @@ def _build_internal(
                 ),
             )
 
-        new_kwargs = CDict()
+        new_kwargs: CDict[str, Any] = CDict()
         while kwargs:
             key = next(iter(kwargs))
             try:
@@ -150,7 +149,8 @@ def _build_ndframe_windower(
         except ValueError:
             maybe_numpy_kwargs = maybe_index_kwargs = maybe_columns_kwargs = CDict()
 
-        result = _build_internal(temp_dir=temp_dir)(
+        # pass decomposed arguments to internal function
+        result: ndarray = _build_internal(temp_dir=temp_dir)(
             *maybe_numpy_args.zip(maybe_index_args).flatten(),
             _func=func,
             _maybe_columns_args=maybe_columns_args,
@@ -161,6 +161,8 @@ def _build_ndframe_windower(
             **maybe_numpy_kwargs,
             **maybe_index_kwargs.map_keys(lambda x: f"_{x}"),
         )
+
+        # reassemble result
         if result.ndim == 1:
             return Series(result, index=index)
         elif result.ndim == 2:
@@ -183,6 +185,8 @@ def _build_ndframe_windower(
             else:
                 df_columns_use = columns
             return DataFrame(result, index=index, columns=df_columns_use)
+        else:
+            raise ValueError(f"Expected 1 or 2 dimensions; got {result.ndim}")
 
     return wrapped
 

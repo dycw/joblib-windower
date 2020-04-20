@@ -146,7 +146,7 @@ def _build_array_windower(
 
         # NaN head and copy last result
         out_array = array(output)
-        for i, maybe_slice in indexers.enumerate().filter(lambda x: x[1] is None):
+        for i, _ in indexers.enumerate().filter(lambda x: x[1] is None):
             out_array[i] = nan
         out_array[-1] = last_result
         return out_array
@@ -158,7 +158,7 @@ def ndarray_windower(
     func: Optional[Callable[..., Union[float, ndarray]]] = None,
     *,
     temp_dir: Union[Path, str] = TEMP_DIR,
-) -> Callable[..., Union[float, ndarray]]:
+) -> Callable[..., ndarray]:
     if func is None:
         return partial(ndarray_windower, temp_dir=temp_dir)
     else:
