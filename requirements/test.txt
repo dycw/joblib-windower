@@ -1,6 +1,5 @@
 -r core.txt
 
-hypothesis
 pytest
 pytest-cov
 pytest-randomly
