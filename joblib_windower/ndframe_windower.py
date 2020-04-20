@@ -60,10 +60,24 @@ def internal(
     _maybe_columns_kwargs: Dict[str, Optional[Index]],
     **kwargs: Tuple[Any, Optional[Index], Optional[Index]],
 ) -> Union[Series, DataFrame]:
-    breakpoint()
-    maybe_to_pandas = partial(_maybe_to_pandas, transforms=_transforms, index=_index)
-    new_args: CList[Any] = CList(args).enumerate().starmap(maybe_to_pandas)
-    new_kwargs: CDict[str, Any] = CDict(kwargs).map_items(lambda k, v: (k, maybe_to_pandas(k, v)))
+    # maybe_to_pandas = partial(_maybe_to_pandas, _maybe_columns_args=_maybe_columns_args, index=_index)
+    # new_args: CList[Any] = CList(args).enumerate().starmap(maybe_to_pandas)
+    # new_kwargs: CDict[str, Any] = CDict(kwargs).map_items(lambda k, v: (k, maybe_to_pandas(k, v)))
+    new_args = []
+
+    new_kwargs = {}
+    while kwargs:
+        key = next(iter(kwargs))
+        try:
+            value, index_ = kwargs.pop(key), kwargs.pop(f"_{key}")
+        except KeyError:
+            key = key[1:]
+            value, index_ = kwargs.pop(key), kwargs.pop(f"_{key}")
+        if isinstance(value, ndarray):
+            break
+        else:
+            new_kwargs[key] = value
+
     return _func(*new_args, **new_kwargs)
 
 
@@ -88,10 +102,10 @@ def _build_ndframe_windower(
 
         try:
             maybe_numpy_args, maybe_index_args, maybe_columns_args = args.map(
-                _maybe_to_numpy
+                _maybe_to_numpy,
             ).unzip()
         except ValueError:
-            maybe_numpy_args = maybe_index_args = maybe_columns_args = []
+            maybe_numpy_args = maybe_index_args = maybe_columns_args = CList()
         try:
             maybe_numpy_kwargs, maybe_index_kwargs, maybe_columns_kwargs = (
                 kwargs.map_values(_maybe_to_numpy).values().unzip()
@@ -100,7 +114,7 @@ def _build_ndframe_windower(
             maybe_index_kwargs = kwargs.keys().zip(maybe_index_kwargs).dict()
             maybe_columns_kwargs = kwargs.keys().zip(maybe_columns_kwargs).dict()
         except ValueError:
-            maybe_numpy_kwargs = maybe_index_kwargs = maybe_columns_kwargs = {}
+            maybe_numpy_kwargs = maybe_index_kwargs = maybe_columns_kwargs = CDict()
 
         result = internal(
             *maybe_numpy_args,
@@ -112,15 +126,15 @@ def _build_ndframe_windower(
             min_frac=min_frac,
             n_jobs=n_jobs,
             **maybe_numpy_kwargs,
-            **{f"_{k}_index": v for k, v in maybe_index_kwargs.items()},
+            **maybe_index_kwargs.map_keys(lambda x: f"_{x}"),
         )
         assert isinstance(result, ndarray)
 
-        if length == 0:
-            raise ValueError("Expected non-zero length")
-
+        indices = maybe_index_args.chain(maybe_index_kwargs.values())
+        assert indices
+        index, *_ = indices
         if result.ndim == 1:
-            return Series(result, index=1)
+            return Series(result, index=index)
 
     return wrapped
 
