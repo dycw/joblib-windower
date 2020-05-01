@@ -22,7 +22,7 @@ from pandas import Series
 from pandas.testing import assert_index_equal
 
 from joblib_windower import ndarray_windower
-from joblib_windower.errors import NonPositiveWindowError
+from joblib_windower.errors import InvalidWindowError
 from joblib_windower.ndarray_windower import CPU_COUNT
 from joblib_windower.ndarray_windower import TEMP_DIR
 
@@ -130,7 +130,7 @@ def _build_ndframe_windower(
             assert_index_equal(index1, index2)
         index, *_ = indices
         if window <= 0:
-            raise NonPositiveWindowError(f"Got window = {window}")
+            raise InvalidWindowError(f"Got window = {window}")
 
         # maybe decompose arguments
         try:
