@@ -12,4 +12,4 @@ __all__ = [
     "slide_ndarrays",
     "slide_ndframes",
 ]
-__version__ = "0.3.4"
+__version__ = "0.3.5"
