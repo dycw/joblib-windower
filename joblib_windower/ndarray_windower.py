@@ -24,7 +24,7 @@ from numpy import memmap
 from numpy import nan
 from numpy import ndarray
 
-from joblib_windower.errors import NonPositiveWindowError
+from joblib_windower.errors import InvalidWindowError
 
 
 CPU_COUNT = cpu_count()
@@ -79,7 +79,7 @@ def _build_array_windower(
         **kwargs: Any,
     ) -> ndarray:
         if window <= 0:
-            raise NonPositiveWindowError(f"Got window = {window}")
+            raise InvalidWindowError(f"Got window = {window}")
 
         applies_slice = _applies_slice(func)
         Path(temp_dir).mkdir(parents=True, exist_ok=True)
