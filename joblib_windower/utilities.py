@@ -20,6 +20,8 @@ from functional_itertools import CIterable
 from functional_itertools import CList
 from functional_itertools import CSet
 from functional_itertools import CTuple
+from functional_itertools import EmptyIterableError
+from functional_itertools import MultipleElementsError
 from numpy import dtype
 from numpy import issubdtype
 from numpy import nan
@@ -29,9 +31,9 @@ from numpy import str_
 from numpy import vectorize
 from numpy.ma import MaskedArray
 from numpy.testing import assert_array_equal
+from pandas import DataFrame
 from pandas import Series
 from pandas import Timestamp
-
 
 ArrayLike = TypeVar("ArrayLike", ndarray, MaskedArray)
 IntOrSlice = TypeVar("IntOrSlice", int, slice)
@@ -98,10 +100,25 @@ def get_output_spec(
     except TypeError:
         if isinstance(value, ndarray):
             return OutputSpec(dtype=value.dtype, shape=CTuple([length]).chain(value.shape))
-        if isinstance(value, Sequence):
-            values_to_check = value
         elif isinstance(value, Series):
-            values_to_check = value.dropna()
+            if value.dtype == object:
+                values_to_check = value.dropna()
+            else:
+                return OutputSpec(dtype=value.dtype, shape=(length, len(value)))
+        elif isinstance(value, DataFrame):
+            try:
+                dtype = CSet(value.dtypes).one()
+            except EmptyIterableError:
+                raise ValueError("Output DataFrame has no columns")
+            except MultipleElementsError:
+                raise ValueError("Output DataFrame has mixed dtypes")
+            else:
+                if dtype == object:
+                    raise NotImplementedError("DataFrames of objects")
+                else:
+                    return OutputSpec(dtype=dtype, shape=CTuple([length]).chain(value.shape))
+        elif isinstance(value, Sequence):
+            values_to_check = value
         else:
             raise TypeError(f"Invalid type: {type(value).__name__}") from None
         dtypes = (

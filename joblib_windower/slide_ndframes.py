@@ -13,6 +13,7 @@ from typing import Union
 
 from attr import attrs
 from functional_itertools import CIterable
+from functional_itertools import CList
 from functional_itertools import CSet
 from functional_itertools import CTuple
 from functional_itertools import EmptyIterableError
@@ -26,6 +27,7 @@ from numpy import number
 from numpy import str_
 from numpy import vectorize
 from numpy.ma import MaskedArray
+from pandas import concat
 from pandas import DataFrame
 from pandas import Index
 from pandas import Series
@@ -154,16 +156,27 @@ def get_ndframe_spec(x: dtype) -> NDFrameSpec:
 
 
 def masked_array_to_pandas_object(
-    x: MaskedArray, index: Index, name: Optional[Hashable], columns: Optional[Index],
+    array: MaskedArray, index: Index, name: Optional[Hashable], columns: Optional[Index],
 ) -> Union[Series, DataFrame]:
-    spec = get_ndframe_spec(x.dtype)
-    if x.ndim == 1:
-        ndframe = Series(data=x.data, index=index, dtype=spec.dtype, name=name)
-    elif x.ndim == 2:
-        ndframe = DataFrame(data=x.data, index=index, columns=columns)
+    spec = get_ndframe_spec(array.dtype)
+    if array.ndim == 1:
+        return Series(data=array.data, index=index, dtype=spec.dtype, name=name).where(
+            ~array.mask, spec.masked,
+        )
+    elif array.ndim == 2:
+        return DataFrame(data=array.data, index=index, columns=columns).where(
+            ~array.mask, spec.masked,
+        )
+    elif array.ndim == 3:
+        length, *_ = array.shape
+        dfs = CList.range(length).map(
+            lambda x: DataFrame(data=array.data[x], columns=columns).where(
+                ~array.mask[x], spec.masked,
+            ),
+        )
+        return concat(dfs, axis=0, keys=index)
     else:
-        raise ValueError(f"Expected 1 or 2 dimensions; got {x.ndim}")
-    return ndframe.where(~x.mask, spec.masked)
+        raise ValueError(f"Expected 1-3 dimensions; got {array.ndim}")
 
 
 def pack_argument(
