@@ -18,6 +18,8 @@ from functional_itertools import CList
 from functional_itertools import CSet
 from functional_itertools import EmptyIterableError
 from functional_itertools import MultipleElementsError
+from joblib import delayed
+from joblib import Parallel
 from numpy import ma
 from numpy import memmap
 from numpy import ndarray
@@ -191,10 +193,8 @@ def slide_ndarrays(
         output_data[last_sliced.index] = last_result
 
         # apply rest
-        sliced[:-1].map(
-            partial(apply_sliced, func=func, output=output_data),
-            parallel=parallel,
-            processes=processes,
+        Parallel(n_jobs=processes if parallel else None)(
+            delayed(apply_sliced)(s, func=func, output=output_data) for s in sliced[:-1]
         )
 
         # build MA
