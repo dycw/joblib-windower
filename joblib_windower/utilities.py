@@ -22,12 +22,14 @@ from functional_itertools import CSet
 from functional_itertools import CTuple
 from functional_itertools import EmptyIterableError
 from functional_itertools import MultipleElementsError
+from numpy import datetime64
 from numpy import dtype
 from numpy import issubdtype
 from numpy import nan
 from numpy import ndarray
 from numpy import number
 from numpy import str_
+from numpy import timedelta64
 from numpy import vectorize
 from numpy.ma import MaskedArray
 from numpy.testing import assert_array_equal
@@ -161,9 +163,9 @@ def primitive_to_dtype(value: Any, *, str_len_factor: int = DEFAULT_STR_LEN_FACT
         return dtype(float)
     elif isinstance(value, str):
         return width_to_str_dtype(str_len_factor * len(value))
-    elif isinstance(value, dt.date):
+    elif isinstance(value, (dt.date, datetime64)):
         return datetime64ns
-    elif isinstance(value, dt.timedelta):
+    elif isinstance(value, (dt.timedelta, timedelta64)):
         return timedelta64ns
     elif isinstance(value, number):
         return value.dtype
