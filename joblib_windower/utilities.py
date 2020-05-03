@@ -22,6 +22,7 @@ from functional_itertools import CSet
 from functional_itertools import CTuple
 from functional_itertools import EmptyIterableError
 from functional_itertools import MultipleElementsError
+from numpy import bool_
 from numpy import datetime64
 from numpy import dtype
 from numpy import issubdtype
@@ -155,7 +156,7 @@ def merge_str_dtypes(x: CSet[dtype]) -> dtype:
 
 
 def primitive_to_dtype(value: Any, *, str_len_factor: int = DEFAULT_STR_LEN_FACTOR) -> dtype:
-    if isinstance(value, bool):
+    if isinstance(value, (bool, bool_)):
         return dtype(bool)
     elif isinstance(value, int):
         return dtype(int)
