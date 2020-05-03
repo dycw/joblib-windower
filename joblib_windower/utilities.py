@@ -151,8 +151,7 @@ def merge_dtypes(x: CSet[dtype]) -> CSet[dtype]:
 
 
 def merge_str_dtypes(x: CSet[dtype]) -> dtype:
-    max_width = CIterable(x).map(str_dtype_to_width).max()
-    return width_to_str_dtype(max_width)
+    return width_to_str_dtype(x.map(str_dtype_to_width).max())
 
 
 def primitive_to_dtype(value: Any, *, str_len_factor: int = DEFAULT_STR_LEN_FACTOR) -> dtype:
