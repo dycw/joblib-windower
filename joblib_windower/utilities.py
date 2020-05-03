@@ -10,6 +10,7 @@ from typing import Callable
 from typing import Sequence
 from typing import Tuple
 from typing import TypeVar
+from typing import Union
 
 import numpy
 from attr import attrib
@@ -35,6 +36,7 @@ from numpy import vectorize
 from numpy.ma import MaskedArray
 from numpy.testing import assert_array_equal
 from pandas import DataFrame
+from pandas import Index
 from pandas import Series
 from pandas import Timestamp
 
@@ -96,40 +98,26 @@ def are_equal_objects(x: Any, y: Any) -> bool:
 
 
 def get_output_spec(
-    value: Any, length: int, *, str_len_factor: int = DEFAULT_STR_LEN_FACTOR,
+    x: Any, length: int, *, str_len_factor: int = DEFAULT_STR_LEN_FACTOR,
 ) -> OutputSpec:
     try:
-        dtype = primitive_to_dtype(value, str_len_factor=str_len_factor)
+        dtype = primitive_to_dtype(x, str_len_factor=str_len_factor)
     except TypeError:
-        if isinstance(value, ndarray):
-            return OutputSpec(dtype=value.dtype, shape=CTuple([length]).chain(value.shape))
-        elif isinstance(value, Series):
-            if value.dtype == object:
-                values_to_check = value.dropna()
-            else:
-                return OutputSpec(dtype=value.dtype, shape=(length, len(value)))
-        elif isinstance(value, DataFrame):
-            try:
-                dtype = CSet(value.dtypes).one()
-            except EmptyIterableError:
-                raise ValueError("Output DataFrame has no columns")
-            except MultipleElementsError:
-                raise ValueError("Output DataFrame has mixed dtypes")
-            else:
-                if dtype == object:
-                    raise NotImplementedError("DataFrames of objects")
-                else:
-                    return OutputSpec(dtype=dtype, shape=CTuple([length]).chain(value.shape))
-        elif isinstance(value, Sequence):
-            values_to_check = value
+        if isinstance(x, ndarray):
+            return OutputSpec(dtype=x.dtype, shape=CTuple([length]).chain(x.shape))
+        elif isinstance(x, (Index, Series, DataFrame)):
+            as_array = pandas_obj_to_ndarray(x, str_len_factor=str_len_factor)
+            return OutputSpec(dtype=as_array.dtype, shape=CTuple([length]).chain(x.shape))
+        elif isinstance(x, Sequence):
+            values_to_check = x
         else:
-            raise TypeError(f"Invalid type: {type(value).__name__}") from None
+            raise TypeError(f"Invalid type: {type(x).__name__}") from None
         dtypes = (
             CList(values_to_check)
             .map(partial(primitive_to_dtype, str_len_factor=str_len_factor))
             .set()
         )
-        return OutputSpec(dtype=get_unique_dtype(dtypes), shape=(length, len(value)))
+        return OutputSpec(dtype=get_unique_dtype(dtypes), shape=(length, len(x)))
     else:
         return OutputSpec(dtype=dtype, shape=(length,))
 
@@ -152,6 +140,38 @@ def merge_dtypes(x: CSet[dtype]) -> CSet[dtype]:
 
 def merge_str_dtypes(x: CSet[dtype]) -> dtype:
     return width_to_str_dtype(x.map(str_dtype_to_width).max())
+
+
+def pandas_obj_to_ndarray(
+    x: Union[Index, Series, DataFrame], *, str_len_factor: int = DEFAULT_STR_LEN_FACTOR,
+) -> ndarray:
+    if isinstance(x, (Index, Series)):
+        if x.dtype == object:
+            dtype = get_unique_dtype(
+                CList(x.dropna())
+                .map(partial(primitive_to_dtype, str_len_factor=str_len_factor))
+                .set(),
+            )
+            return x.to_numpy().astype(dtype)
+        else:
+            return x.to_numpy()
+    elif isinstance(x, DataFrame):
+        try:
+            dtype = CSet(x.dtypes).one()
+        except EmptyIterableError:
+            raise ValueError("Output DataFrame has no columns")
+        except MultipleElementsError:
+            raise ValueError("Output DataFrame has mixed dtypes")
+        else:
+            if dtype == object:
+                stacked = x.stack(dropna=False)
+                return pandas_obj_to_ndarray(stacked, str_len_factor=str_len_factor).reshape(
+                    x.shape,
+                )
+            else:
+                return x.to_numpy()
+    else:
+        raise TypeError(f"Invalid type: {type(x).__name__}")
 
 
 def primitive_to_dtype(value: Any, *, str_len_factor: int = DEFAULT_STR_LEN_FACTOR) -> dtype:
