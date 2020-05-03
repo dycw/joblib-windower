@@ -7,6 +7,7 @@ from attr import attrs
 from functional_itertools import CList
 from functional_itertools import CSet
 from numpy import array
+from numpy import datetime64
 from numpy import dtype
 from numpy import float32
 from numpy import float64
@@ -14,6 +15,7 @@ from numpy import int32
 from numpy import int64
 from numpy import nan
 from numpy import ndarray
+from numpy import timedelta64
 from numpy.ma import arange
 from pandas import Series
 from pytest import mark
@@ -51,7 +53,9 @@ PRIMITIVE_TO_DTYPE_CASES = CList(
         PrimitiveToDtypeCase(value="a", dtype=width_to_str_dtype(DEFAULT_STR_LEN_FACTOR)),
         PrimitiveToDtypeCase(value="ab", dtype=width_to_str_dtype(2 * DEFAULT_STR_LEN_FACTOR)),
         PrimitiveToDtypeCase(value=dt.date.today(), dtype=datetime64ns),
+        PrimitiveToDtypeCase(value=datetime64(0, "ns"), dtype=datetime64ns),
         PrimitiveToDtypeCase(value=dt.timedelta(days=0), dtype=timedelta64ns),
+        PrimitiveToDtypeCase(value=timedelta64(0, "ns"), dtype=timedelta64ns),
     ],
 )
 
