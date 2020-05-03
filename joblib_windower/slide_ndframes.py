@@ -159,14 +159,17 @@ def masked_array_to_pandas_object(
             ~array.mask, spec.masked,
         )
     elif array.ndim == 2:
-        return DataFrame(data=array.data, index=index, columns=columns).where(
-            ~array.mask, spec.masked,
-        )
+        m, n = array.shape
+        return DataFrame(
+            data=array.data,
+            index=index if len(index) == m else None,
+            columns=columns if columns is not None and len(columns) == n else None,
+        ).where(~array.mask, spec.masked)
     elif array.ndim == 3:
         length, *_ = array.shape
         dfs = CList.range(length).map(
-            lambda x: DataFrame(data=array.data[x], columns=columns).where(
-                ~array.mask[x], spec.masked,
+            lambda x: masked_array_to_pandas_object(
+                array=array[x], index=index, name=name, columns=columns,
             ),
         )
         return concat(dfs, axis=0, keys=index)
