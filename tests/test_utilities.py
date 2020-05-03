@@ -7,6 +7,7 @@ from attr import attrs
 from functional_itertools import CList
 from functional_itertools import CSet
 from numpy import array
+from numpy import bool_
 from numpy import datetime64
 from numpy import dtype
 from numpy import float32
@@ -44,6 +45,7 @@ class PrimitiveToDtypeCase:
 PRIMITIVE_TO_DTYPE_CASES = CList(
     [
         PrimitiveToDtypeCase(value=True, dtype=dtype(bool)),
+        PrimitiveToDtypeCase(value=bool_(True), dtype=dtype(bool)),
         PrimitiveToDtypeCase(value=0, dtype=dtype(int)),
         PrimitiveToDtypeCase(value=int32(0), dtype=dtype(int32)),
         PrimitiveToDtypeCase(value=int64(0), dtype=dtype(int64)),
