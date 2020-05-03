@@ -18,17 +18,23 @@ from numpy import nan
 from numpy import ndarray
 from numpy import timedelta64
 from numpy.ma import arange
+from pandas import DataFrame
+from pandas import Float64Index
+from pandas import Index
+from pandas import Int64Index
 from pandas import Series
 from pytest import mark
 
 from joblib_windower.slide_ndarrays import OutputSpec
 from joblib_windower.utilities import are_equal_arrays
+from joblib_windower.utilities import are_equal_objects
 from joblib_windower.utilities import datetime64ns
 from joblib_windower.utilities import DEFAULT_STR_LEN_FACTOR
 from joblib_windower.utilities import get_output_spec
 from joblib_windower.utilities import is_not_none
 from joblib_windower.utilities import merge_dtypes
 from joblib_windower.utilities import merge_str_dtypes
+from joblib_windower.utilities import pandas_obj_to_ndarray
 from joblib_windower.utilities import primitive_to_dtype
 from joblib_windower.utilities import str_dtype_to_width
 from joblib_windower.utilities import timedelta64ns
@@ -147,6 +153,36 @@ def test_merge_dtypes(x: CSet[dtype], expected: CSet[dtype]) -> None:
 )
 def test_merge_str_dtypes(x: CSet[dtype], expected: dtype) -> None:
     assert merge_str_dtypes(x) == expected
+
+
+@mark.parametrize(
+    "obj, expected",
+    [
+        (Int64Index([0, 1, 2]), array([0, 1, 2], dtype=int)),
+        (Float64Index([0.0, 1.0, 2.0]), array([0.0, 1.0, 2.0], dtype=float)),
+        (
+            Index(["a", "b", "c"]),
+            array(["a", "b", "c"], dtype=width_to_str_dtype(DEFAULT_STR_LEN_FACTOR)),
+        ),
+        (Series([0, 1, 2]), array([0, 1, 2], dtype=int)),
+        (Series([0.0, 1.0, 2.0]), array([0, 1, 2], dtype=float)),
+        (
+            Series(["a", "b", "c"]),
+            array(["a", "b", "c"], dtype=width_to_str_dtype(DEFAULT_STR_LEN_FACTOR)),
+        ),
+        (Series([True, False, nan]), array([True, False, True], dtype=bool)),
+        (
+            DataFrame([[True, False], [True, False]], dtype=bool),
+            array([[True, False], [True, False]], dtype=bool),
+        ),
+        (
+            DataFrame([[True, False], [True, nan]], dtype=object),
+            array([[True, False], [True, True]], dtype=bool),
+        ),
+    ],
+)
+def test_pandas_obj_to_array(obj: Any, expected: ndarray) -> None:
+    assert are_equal_objects(pandas_obj_to_ndarray(obj), expected)
 
 
 @mark.parametrize("case", PRIMITIVE_TO_DTYPE_CASES)
