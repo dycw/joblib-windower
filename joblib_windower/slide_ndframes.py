@@ -14,7 +14,6 @@ from typing import Union
 from attr import attrs
 from functional_itertools import CIterable
 from functional_itertools import CList
-from functional_itertools import CSet
 from functional_itertools import CTuple
 from functional_itertools import EmptyIterableError
 from functional_itertools import MultipleElementsError
@@ -25,7 +24,6 @@ from numpy import nan
 from numpy import ndarray
 from numpy import number
 from numpy import str_
-from numpy import vectorize
 from numpy.ma import MaskedArray
 from pandas import concat
 from pandas import DataFrame
@@ -38,14 +36,11 @@ from joblib_windower.utilities import Arguments
 from joblib_windower.utilities import CPU_COUNT
 from joblib_windower.utilities import datetime64ns
 from joblib_windower.utilities import DEFAULT_STR_LEN_FACTOR
-from joblib_windower.utilities import get_unique_dtype
 from joblib_windower.utilities import is_not_none
 from joblib_windower.utilities import NaT
-from joblib_windower.utilities import primitive_to_dtype
+from joblib_windower.utilities import pandas_obj_to_ndarray
 from joblib_windower.utilities import TEMP_DIR
 from joblib_windower.utilities import timedelta64ns
-from joblib_windower.utilities import trim_str_dtype
-
 
 T = TypeVar("T")
 
@@ -203,13 +198,6 @@ def pack_argument(
             return Series(x, index=metadata.columns, name=maybe_index)
     else:
         return x
-
-
-def pandas_obj_to_ndarray(x: Union[Index, Series, DataFrame]) -> ndarray:
-    array = x.to_numpy()
-    dtypes = vectorize(primitive_to_dtype)(array)
-    dtype = get_unique_dtype(CSet(dtypes.ravel()))
-    return trim_str_dtype(array.astype(dtype))
 
 
 def slide_ndframes(
