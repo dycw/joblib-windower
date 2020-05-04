@@ -119,7 +119,7 @@ def get_slicers(
     else:
         slicers = (
             pairs.starmap(lambda x, y: (x, max(y - window + 1, 0), min(y + 1, length)))
-            .starfilter(lambda x, start, stop: (stop - start) >= 1)
+            .starfilter(lambda _, start, stop: (stop - start) >= 1)
             .starmap(lambda x, start, stop: Slicer(index=x, int_or_slice=slice(start, stop)))
         )
         if min_frac is not None:
