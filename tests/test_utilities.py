@@ -172,11 +172,11 @@ def test_merge_str_dtypes(x: CSet[dtype], expected: dtype) -> None:
         ),
         (Series([True, False, nan]), array([True, False, True], dtype=bool)),
         (
-            DataFrame([[True, False], [True, False]], dtype=bool),
+            DataFrame([[True, False], [True, False]], dtype=dtype(bool)),
             array([[True, False], [True, False]], dtype=bool),
         ),
         (
-            DataFrame([[True, False], [True, nan]], dtype=object),
+            DataFrame([[True, False], [True, nan]], dtype=dtype(object)),
             array([[True, False], [True, True]], dtype=bool),
         ),
     ],
