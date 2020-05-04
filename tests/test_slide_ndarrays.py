@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from functools import partial
 from typing import Any
+from typing import Callable
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -66,90 +68,223 @@ def test_get_maybe_ndarray_length(x: Any, expected: Optional[int]) -> None:
 
 
 @mark.parametrize(
-    "result, expected",
+    "callable_, expected",
     [
         (
-            get_slicers(5),
+            partial(get_slicers, 10),
             [
                 Slicer(index=0, int_or_slice=0),
                 Slicer(index=1, int_or_slice=1),
                 Slicer(index=2, int_or_slice=2),
                 Slicer(index=3, int_or_slice=3),
                 Slicer(index=4, int_or_slice=4),
+                Slicer(index=5, int_or_slice=5),
+                Slicer(index=6, int_or_slice=6),
+                Slicer(index=7, int_or_slice=7),
+                Slicer(index=8, int_or_slice=8),
+                Slicer(index=9, int_or_slice=9),
             ],
         ),
         (
-            get_slicers(5, step=2),
+            partial(get_slicers, 10, lag=1),
+            [
+                Slicer(index=1, int_or_slice=0),
+                Slicer(index=2, int_or_slice=1),
+                Slicer(index=3, int_or_slice=2),
+                Slicer(index=4, int_or_slice=3),
+                Slicer(index=5, int_or_slice=4),
+                Slicer(index=6, int_or_slice=5),
+                Slicer(index=7, int_or_slice=6),
+                Slicer(index=8, int_or_slice=7),
+                Slicer(index=9, int_or_slice=8),
+            ],
+        ),
+        (
+            partial(get_slicers, 10, lag=-1),
+            [
+                Slicer(index=0, int_or_slice=1),
+                Slicer(index=1, int_or_slice=2),
+                Slicer(index=2, int_or_slice=3),
+                Slicer(index=3, int_or_slice=4),
+                Slicer(index=4, int_or_slice=5),
+                Slicer(index=5, int_or_slice=6),
+                Slicer(index=6, int_or_slice=7),
+                Slicer(index=7, int_or_slice=8),
+                Slicer(index=8, int_or_slice=9),
+            ],
+        ),
+        (
+            partial(get_slicers, 10, step=2),
             [
                 Slicer(index=0, int_or_slice=0),
                 Slicer(index=2, int_or_slice=2),
                 Slicer(index=4, int_or_slice=4),
+                Slicer(index=6, int_or_slice=6),
+                Slicer(index=8, int_or_slice=8),
             ],
         ),
         (
-            get_slicers(5, window=2),
+            partial(get_slicers, 10, lag=1, step=2),
+            [
+                Slicer(index=2, int_or_slice=1),
+                Slicer(index=4, int_or_slice=3),
+                Slicer(index=6, int_or_slice=5),
+                Slicer(index=8, int_or_slice=7),
+            ],
+        ),
+        (
+            partial(get_slicers, 10, lag=-1, step=2),
+            [
+                Slicer(index=0, int_or_slice=1),
+                Slicer(index=2, int_or_slice=3),
+                Slicer(index=4, int_or_slice=5),
+                Slicer(index=6, int_or_slice=7),
+                Slicer(index=8, int_or_slice=9),
+            ],
+        ),
+        (
+            partial(get_slicers, 10, window=2),
             [
                 Slicer(index=0, int_or_slice=slice(0, 1)),
                 Slicer(index=1, int_or_slice=slice(0, 2)),
                 Slicer(index=2, int_or_slice=slice(1, 3)),
                 Slicer(index=3, int_or_slice=slice(2, 4)),
                 Slicer(index=4, int_or_slice=slice(3, 5)),
+                Slicer(index=5, int_or_slice=slice(4, 6)),
+                Slicer(index=6, int_or_slice=slice(5, 7)),
+                Slicer(index=7, int_or_slice=slice(6, 8)),
+                Slicer(index=8, int_or_slice=slice(7, 9)),
+                Slicer(index=9, int_or_slice=slice(8, 10)),
             ],
         ),
         (
-            get_slicers(5, window=2, step=2),
+            partial(get_slicers, 10, window=2, lag=1),
+            [
+                Slicer(index=1, int_or_slice=slice(0, 1)),
+                Slicer(index=2, int_or_slice=slice(0, 2)),
+                Slicer(index=3, int_or_slice=slice(1, 3)),
+                Slicer(index=4, int_or_slice=slice(2, 4)),
+                Slicer(index=5, int_or_slice=slice(3, 5)),
+                Slicer(index=6, int_or_slice=slice(4, 6)),
+                Slicer(index=7, int_or_slice=slice(5, 7)),
+                Slicer(index=8, int_or_slice=slice(6, 8)),
+                Slicer(index=9, int_or_slice=slice(7, 9)),
+            ],
+        ),
+        (
+            partial(get_slicers, 10, window=2, lag=-1),
+            [
+                Slicer(index=0, int_or_slice=slice(0, 2)),
+                Slicer(index=1, int_or_slice=slice(1, 3)),
+                Slicer(index=2, int_or_slice=slice(2, 4)),
+                Slicer(index=3, int_or_slice=slice(3, 5)),
+                Slicer(index=4, int_or_slice=slice(4, 6)),
+                Slicer(index=5, int_or_slice=slice(5, 7)),
+                Slicer(index=6, int_or_slice=slice(6, 8)),
+                Slicer(index=7, int_or_slice=slice(7, 9)),
+                Slicer(index=8, int_or_slice=slice(8, 10)),
+                Slicer(index=9, int_or_slice=slice(9, 10)),
+            ],
+        ),
+        (
+            partial(get_slicers, 10, window=2, lag=1, step=2),
+            [
+                Slicer(index=2, int_or_slice=slice(0, 2)),
+                Slicer(index=4, int_or_slice=slice(2, 4)),
+                Slicer(index=6, int_or_slice=slice(4, 6)),
+                Slicer(index=8, int_or_slice=slice(6, 8)),
+            ],
+        ),
+        (
+            partial(get_slicers, 10, window=2, lag=-1, step=2),
+            [
+                Slicer(index=0, int_or_slice=slice(0, 2)),
+                Slicer(index=2, int_or_slice=slice(2, 4)),
+                Slicer(index=4, int_or_slice=slice(4, 6)),
+                Slicer(index=6, int_or_slice=slice(6, 8)),
+                Slicer(index=8, int_or_slice=slice(8, 10)),
+            ],
+        ),
+        (
+            partial(get_slicers, 10, window=5),
             [
                 Slicer(index=0, int_or_slice=slice(0, 1)),
-                Slicer(index=2, int_or_slice=slice(1, 3)),
-                Slicer(index=4, int_or_slice=slice(3, 5)),
-            ],
-        ),
-        (
-            get_slicers(5, window=2, min_frac=0.9),
-            [
                 Slicer(index=1, int_or_slice=slice(0, 2)),
-                Slicer(index=2, int_or_slice=slice(1, 3)),
-                Slicer(index=3, int_or_slice=slice(2, 4)),
-                Slicer(index=4, int_or_slice=slice(3, 5)),
-            ],
-        ),
-        (
-            get_slicers(5, window=2, min_frac=0.9, step=2),
-            [Slicer(index=2, int_or_slice=slice(1, 3)), Slicer(index=4, int_or_slice=slice(3, 5))],
-        ),
-        (
-            get_slicers(5, window=3),
-            [
-                Slicer(index=0, int_or_slice=slice(0, 1)),
-                Slicer(index=1, int_or_slice=slice(0, 2)),
                 Slicer(index=2, int_or_slice=slice(0, 3)),
-                Slicer(index=3, int_or_slice=slice(1, 4)),
-                Slicer(index=4, int_or_slice=slice(2, 5)),
+                Slicer(index=3, int_or_slice=slice(0, 4)),
+                Slicer(index=4, int_or_slice=slice(0, 5)),
+                Slicer(index=5, int_or_slice=slice(1, 6)),
+                Slicer(index=6, int_or_slice=slice(2, 7)),
+                Slicer(index=7, int_or_slice=slice(3, 8)),
+                Slicer(index=8, int_or_slice=slice(4, 9)),
+                Slicer(index=9, int_or_slice=slice(5, 10)),
             ],
         ),
         (
-            get_slicers(5, window=3, step=2),
+            partial(get_slicers, 10, window=5, min_frac=0.75),
             [
-                Slicer(index=0, int_or_slice=slice(0, 1)),
-                Slicer(index=2, int_or_slice=slice(0, 3)),
-                Slicer(index=4, int_or_slice=slice(2, 5)),
+                Slicer(index=3, int_or_slice=slice(0, 4)),
+                Slicer(index=4, int_or_slice=slice(0, 5)),
+                Slicer(index=5, int_or_slice=slice(1, 6)),
+                Slicer(index=6, int_or_slice=slice(2, 7)),
+                Slicer(index=7, int_or_slice=slice(3, 8)),
+                Slicer(index=8, int_or_slice=slice(4, 9)),
+                Slicer(index=9, int_or_slice=slice(5, 10)),
             ],
         ),
         (
-            get_slicers(5, window=3, min_frac=0.9),
+            partial(get_slicers, 10, window=5, lag=1, min_frac=0.75),
             [
-                Slicer(index=2, int_or_slice=slice(0, 3)),
-                Slicer(index=3, int_or_slice=slice(1, 4)),
-                Slicer(index=4, int_or_slice=slice(2, 5)),
+                Slicer(index=4, int_or_slice=slice(0, 4)),
+                Slicer(index=5, int_or_slice=slice(0, 5)),
+                Slicer(index=6, int_or_slice=slice(1, 6)),
+                Slicer(index=7, int_or_slice=slice(2, 7)),
+                Slicer(index=8, int_or_slice=slice(3, 8)),
+                Slicer(index=9, int_or_slice=slice(4, 9)),
             ],
         ),
         (
-            get_slicers(length=5, window=3, min_frac=0.9, step=2),
-            [Slicer(index=2, int_or_slice=slice(0, 3)), Slicer(index=4, int_or_slice=slice(2, 5))],
+            partial(get_slicers, 10, window=5, lag=-1, min_frac=0.75),
+            [
+                Slicer(index=2, int_or_slice=slice(0, 4)),
+                Slicer(index=3, int_or_slice=slice(0, 5)),
+                Slicer(index=4, int_or_slice=slice(1, 6)),
+                Slicer(index=5, int_or_slice=slice(2, 7)),
+                Slicer(index=6, int_or_slice=slice(3, 8)),
+                Slicer(index=7, int_or_slice=slice(4, 9)),
+                Slicer(index=8, int_or_slice=slice(5, 10)),
+                Slicer(index=9, int_or_slice=slice(6, 10)),
+            ],
+        ),
+        (
+            partial(get_slicers, 10, window=5, step=2, min_frac=0.75),
+            [
+                Slicer(index=4, int_or_slice=slice(0, 5)),
+                Slicer(index=6, int_or_slice=slice(2, 7)),
+                Slicer(index=8, int_or_slice=slice(4, 9)),
+            ],
+        ),
+        (
+            partial(get_slicers, 10, window=5, lag=1, step=2, min_frac=0.75),
+            [
+                Slicer(index=4, int_or_slice=slice(0, 4)),
+                Slicer(index=6, int_or_slice=slice(1, 6)),
+                Slicer(index=8, int_or_slice=slice(3, 8)),
+            ],
+        ),
+        (
+            partial(get_slicers, 10, window=5, lag=-1, step=2, min_frac=0.75),
+            [
+                Slicer(index=2, int_or_slice=slice(0, 4)),
+                Slicer(index=4, int_or_slice=slice(1, 6)),
+                Slicer(index=6, int_or_slice=slice(3, 8)),
+                Slicer(index=8, int_or_slice=slice(5, 10)),
+            ],
         ),
     ],
 )
-def test_get_slicers(result: Any, expected: List[Slicer]) -> None:
+def test_get_slicers(callable_: Callable[..., CList[Slicer]], expected: List[Slicer]) -> None:
+    result = callable_()
     assert isinstance(result, CList)
     assert result.map(lambda x: isinstance(x, Slicer)).all()
     assert result == expected

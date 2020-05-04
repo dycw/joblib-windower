@@ -9,6 +9,10 @@ class InvalidMinFracError(ValueError):
     """Raised when the minimum fraction is invalid."""
 
 
+class InvalidLagError(ValueError):
+    """Raised when the lag is invalid."""
+
+
 class InvalidLengthError(ValueError):
     """Raised when the length is invalid."""
 
