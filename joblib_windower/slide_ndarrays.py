@@ -14,6 +14,7 @@ import joblib
 from atomic_write_path import atomic_write_path
 from attr import attrs
 from functional_itertools import CAttrs
+from functional_itertools import CIterable
 from functional_itertools import CList
 from functional_itertools import CSet
 from functional_itertools import EmptyIterableError
@@ -27,11 +28,13 @@ from numpy import zeros_like
 from numpy.ma import MaskedArray
 
 from joblib_windower.errors import InvalidDTypeError
+from joblib_windower.errors import InvalidLagError
 from joblib_windower.errors import InvalidLengthError
 from joblib_windower.errors import InvalidMinFracError
 from joblib_windower.errors import InvalidStepError
 from joblib_windower.errors import InvalidWindowError
 from joblib_windower.errors import NoSlicersError
+from joblib_windower.errors import NoWindowButMinFracProvidedError
 from joblib_windower.utilities import Arguments
 from joblib_windower.utilities import CPU_COUNT
 from joblib_windower.utilities import DEFAULT_STR_LEN_FACTOR
@@ -86,33 +89,47 @@ def get_output(spec: OutputSpec, temp_dir: Union[Path, str]) -> memmap:
 
 
 def get_slicers(
-    length: int, *, window: int = 1, min_frac: Optional[float] = None, step: int = 1,
+    length: int,
+    *,
+    window: Optional[int] = None,
+    lag: Optional[int] = None,
+    step: Optional[int] = None,
+    min_frac: Optional[float] = None,
 ) -> CList[Slicer[IntOrSlice]]:
-    if not (isinstance(length, int) and (length >= 1)):
+    if not (isinstance(length, int) and (length >= 0)):
         raise InvalidLengthError(f"length = {length}")
-    if not (isinstance(window, int) and 1 <= window <= length):
-        raise InvalidWindowError(f"window = {window}, length = {length}")
-    if not (isinstance(step, int) and step >= 1):
+    if not ((window is None) or (isinstance(window, int) and (window >= 0))):
+        raise InvalidWindowError(f"window = {window}")
+    if not ((lag is None) or (isinstance(lag, int))):
+        raise InvalidLagError(f"lag = {lag}")
+    if not ((step is None) or (isinstance(step, int) and step >= 1)):
         raise InvalidStepError(f"step = {step}")
-    if window == 1:
-        if min_frac is None:
-            slicers = CList.range(length).map(lambda x: Slicer(index=x, int_or_slice=x))
-        else:
-            raise InvalidMinFracError(f"min_frac = {min_frac}")
+    indices = CIterable.range(length)
+    if lag is None:
+        stops = CIterable.range(length)
     else:
-        slicers = CList.range(length).map(
-            lambda x: Slicer(index=x, int_or_slice=slice(max(x - window + 1, 0), x + 1)),
-        )
+        stops = CIterable.count(-lag).islice(length)
     valid_indices = CSet.range(0, stop=length, step=step)
-    slicers = slicers.filter(lambda x: x.index in valid_indices)
-    if min_frac is not None:
-        if isinstance(min_frac, float) and (0.0 <= min_frac <= 1):
-            return slicers.filter(
-                lambda x: ((x.index + 1) - max(x.index - window + 1, 0)) >= (min_frac * window),
-            )
+    pairs = indices.zip(stops).starfilter(lambda x, _: x in valid_indices)
+    if window is None:
+        if min_frac is None:
+            slicers = pairs.starfilter(lambda _, y: 0 <= y < length).starmap(Slicer)
         else:
-            raise InvalidMinFracError(f"min_frac = {min_frac}")
-    return slicers
+            raise NoWindowButMinFracProvidedError(f"window = {window}; min_frac = {min_frac}")
+    else:
+        slicers = (
+            pairs.starmap(lambda x, y: (x, max(y - window + 1, 0), min(y + 1, length)))
+            .starfilter(lambda x, start, stop: (stop - start) >= 1)
+            .starmap(lambda x, start, stop: Slicer(index=x, int_or_slice=slice(start, stop)))
+        )
+        if min_frac is not None:
+            if isinstance(min_frac, float) and (0.0 <= min_frac <= 1):
+                slicers = slicers.filter(
+                    lambda x: (x.int_or_slice.stop - x.int_or_slice.start) >= (min_frac * window),
+                )
+            else:
+                raise InvalidMinFracError(f"min_frac = {min_frac}")
+    return slicers.list()
 
 
 def get_unique_ndarray_length(arguments: Arguments) -> int:
@@ -158,9 +175,10 @@ def slice_arguments(slicer: Slicer, *, arguments: Arguments) -> Sliced:
 def slide_ndarrays(
     func: Callable,
     *args: Any,
-    window: int = 1,
+    window: Optional[int] = None,
+    lag: Optional[int] = None,
+    step: Optional[int] = None,
     min_frac: Optional[float] = None,
-    step: int = 1,
     temp_dir: Union[Path, str] = TEMP_DIR,
     str_len_factor: int = DEFAULT_STR_LEN_FACTOR,
     parallel: bool = False,
@@ -169,7 +187,7 @@ def slide_ndarrays(
 ) -> MaskedArray:
     arguments = Arguments(args=args, kwargs=kwargs)
     length = get_unique_ndarray_length(arguments)
-    slicers = get_slicers(length, window=window, min_frac=min_frac, step=step)
+    slicers = get_slicers(length, window=window, lag=lag, step=step, min_frac=min_frac)
     if not slicers:
         raise NoSlicersError(f"slicers = {slicers}")
 
