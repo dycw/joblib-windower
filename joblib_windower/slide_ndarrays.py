@@ -101,7 +101,7 @@ def get_slicers(
         raise InvalidWindowError(f"window = {window}, length = {length}")
     if not ((lag is None) or (isinstance(lag, int))):
         raise InvalidLagError(f"lag = {lag}")
-    if not ((step is None) or isinstance(step, int) and step >= 1):
+    if not ((step is None) or (isinstance(step, int) and step >= 1)):
         raise InvalidStepError(f"step = {step}")
     indices = CIterable.range(length)
     if lag is None:
