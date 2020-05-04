@@ -105,11 +105,11 @@ def get_slicers(
         raise InvalidStepError(f"step = {step}")
     indices = CIterable.range(length)
     if lag is None:
-        ints = CIterable.range(length)
+        stops = CIterable.range(length)
     else:
-        ints = CIterable.count(-lag).islice(length)
+        stops = CIterable.count(-lag).islice(length)
     valid_indices = CSet.range(0, stop=length, step=step)
-    pairs = indices.zip(ints).starfilter(lambda x, _: x in valid_indices)
+    pairs = indices.zip(stops).starfilter(lambda x, _: x in valid_indices)
     if window is None:
         if min_frac is None:
             slicers = pairs.starfilter(lambda _, y: 0 <= y < length).starmap(Slicer)
