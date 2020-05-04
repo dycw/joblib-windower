@@ -27,3 +27,7 @@ class InvalidWindowError(ValueError):
 
 class NoSlicersError(ValueError):
     """Raised when no slicers are valid."""
+
+
+class NoWindowButMinFracProvidedError(ValueError):
+    """Raised when no window is provided but a minimum fraction is provided."""

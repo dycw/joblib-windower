@@ -3,7 +3,6 @@ from __future__ import annotations
 from functools import partial
 from typing import Any
 from typing import Callable
-from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Type
@@ -17,10 +16,12 @@ from numpy import ones
 from pytest import mark
 from pytest import raises
 
+from joblib_windower.errors import InvalidLagError
 from joblib_windower.errors import InvalidLengthError
 from joblib_windower.errors import InvalidMinFracError
 from joblib_windower.errors import InvalidStepError
 from joblib_windower.errors import InvalidWindowError
+from joblib_windower.errors import NoWindowButMinFracProvidedError
 from joblib_windower.slide_ndarrays import get_maybe_ndarray_length
 from joblib_windower.slide_ndarrays import get_slicers
 from joblib_windower.slide_ndarrays import maybe_slice
@@ -291,19 +292,21 @@ def test_get_slicers(callable_: Callable[..., CList[Slicer]], expected: List[Sli
 
 
 @mark.parametrize(
-    "length, kwargs, error",
+    "callable_, error",
     [
-        (0, {}, InvalidLengthError),
-        (1, {"window": 2}, InvalidWindowError),
-        (1, {"step": 0}, InvalidStepError),
-        (1, {"min_frac": 1.0}, InvalidMinFracError),
-        (2, {"min_frac": -0.1}, InvalidMinFracError),
-        (2, {"min_frac": 1.1}, InvalidMinFracError),
+        (partial(get_slicers, None), InvalidLengthError),
+        (partial(get_slicers, -1), InvalidLengthError),
+        (partial(get_slicers, 5, window=-1), InvalidWindowError),
+        (partial(get_slicers, 5, lag=0.0), InvalidLagError),
+        (partial(get_slicers, 5, step=0.0), InvalidStepError),
+        (partial(get_slicers, 5, min_frac=0.5), NoWindowButMinFracProvidedError),
+        (partial(get_slicers, 5, window=2, min_frac=-0.1), InvalidMinFracError),
+        (partial(get_slicers, 5, window=2, min_frac=1.1), InvalidMinFracError),
     ],
 )
-def test_get_slicers_error(length: int, kwargs: Dict[str, Any], error: Type[Exception]) -> None:
+def test_get_slicers_error(callable_: Callable[[], None], error: Type[Exception]) -> None:
     with raises(error):
-        get_slicers(length, **kwargs)
+        callable_()
 
 
 @mark.parametrize("case", SLICE_CASES)

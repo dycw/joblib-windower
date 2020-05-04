@@ -34,6 +34,7 @@ from joblib_windower.errors import InvalidMinFracError
 from joblib_windower.errors import InvalidStepError
 from joblib_windower.errors import InvalidWindowError
 from joblib_windower.errors import NoSlicersError
+from joblib_windower.errors import NoWindowButMinFracProvidedError
 from joblib_windower.utilities import Arguments
 from joblib_windower.utilities import CPU_COUNT
 from joblib_windower.utilities import DEFAULT_STR_LEN_FACTOR
@@ -97,8 +98,8 @@ def get_slicers(
 ) -> CList[Slicer[IntOrSlice]]:
     if not (isinstance(length, int) and (length >= 0)):
         raise InvalidLengthError(f"length = {length}")
-    if not ((window is None) or (isinstance(window, int) and window <= length)):
-        raise InvalidWindowError(f"window = {window}, length = {length}")
+    if not ((window is None) or (isinstance(window, int) and (window >= 0))):
+        raise InvalidWindowError(f"window = {window}")
     if not ((lag is None) or (isinstance(lag, int))):
         raise InvalidLagError(f"lag = {lag}")
     if not ((step is None) or (isinstance(step, int) and step >= 1)):
@@ -114,7 +115,7 @@ def get_slicers(
         if min_frac is None:
             slicers = pairs.starfilter(lambda _, y: 0 <= y < length).starmap(Slicer)
         else:
-            raise InvalidMinFracError(f"min_frac = {min_frac}")
+            raise NoWindowButMinFracProvidedError(f"window = {window}; min_frac = {min_frac}")
     else:
         slicers = (
             pairs.starmap(lambda x, y: (x, max(y - window + 1, 0), min(y + 1, length)))
