@@ -174,10 +174,10 @@ def slice_arguments(slicer: Slicer, *, arguments: Arguments) -> Sliced:
 def slide_ndarrays(
     func: Callable,
     *args: Any,
-    window: int = 1,
-    shift: int = 0,
+    window: Optional[int] = None,
+    lag: Optional[int] = None,
+    step: Optional[int] = None,
     min_frac: Optional[float] = None,
-    step: int = 1,
     temp_dir: Union[Path, str] = TEMP_DIR,
     str_len_factor: int = DEFAULT_STR_LEN_FACTOR,
     parallel: bool = False,
@@ -186,7 +186,7 @@ def slide_ndarrays(
 ) -> MaskedArray:
     arguments = Arguments(args=args, kwargs=kwargs)
     length = get_unique_ndarray_length(arguments)
-    slicers = get_slicers(length, window=window, step=step, min_frac=min_frac)
+    slicers = get_slicers(length, window=window, lag=lag, step=step, min_frac=min_frac)
     if not slicers:
         raise NoSlicersError(f"slicers = {slicers}")
 
