@@ -95,7 +95,7 @@ def get_slicers(
     step: Optional[int] = None,
     min_frac: Optional[float] = None,
 ) -> CList[Slicer[IntOrSlice]]:
-    if not (isinstance(length, int) and (length >= 1)):
+    if not (isinstance(length, int) and (length >= 0)):
         raise InvalidLengthError(f"length = {length}")
     if not ((window is None) or (isinstance(window, int) and window <= length)):
         raise InvalidWindowError(f"window = {window}, length = {length}")
