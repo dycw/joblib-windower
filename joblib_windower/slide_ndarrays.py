@@ -108,7 +108,7 @@ def get_slicers(
     if lag is None:
         stops = CIterable.range(length)
     else:
-        stops = CIterable.count(-lag).islice(length)
+        stops = CIterable.count(start=-lag).islice(length)
     valid_indices = CSet.range(0, stop=length, step=step)
     pairs = indices.zip(stops).starfilter(lambda x, _: x in valid_indices)
     if window is None:
