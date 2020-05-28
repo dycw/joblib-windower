@@ -21,14 +21,14 @@ from pytest import mark
 from pytest import raises
 
 from joblib_windower.errors import DistinctIndicesError
+from joblib_windower.slide_ndarrays import datetime64ns
+from joblib_windower.slide_ndarrays import NaT
+from joblib_windower.slide_ndarrays import width_to_str_dtype
 from joblib_windower.slide_ndframes import get_maybe_dataframe_columns
 from joblib_windower.slide_ndframes import get_maybe_ndframe_index
 from joblib_windower.slide_ndframes import get_ndframe_spec
 from joblib_windower.slide_ndframes import get_unique_index
 from joblib_windower.slide_ndframes import NDFrameSpec
-from joblib_windower.utilities import datetime64ns
-from joblib_windower.utilities import NaT
-from joblib_windower.utilities import width_to_str_dtype
 
 
 @mark.parametrize(

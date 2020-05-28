@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import datetime as dt
 from functools import partial
 from operator import attrgetter
+from os import cpu_count
 from pathlib import Path
+from re import search
+from tempfile import gettempdir
 from tempfile import TemporaryDirectory
 from typing import Any
 from typing import Callable
@@ -15,8 +19,10 @@ from typing import Union
 import joblib
 import numpy
 from atomic_write_path import atomic_write_path
+from attr import attrib
 from attr import attrs
 from functional_itertools import CAttrs
+from functional_itertools import CDict
 from functional_itertools import CIterable
 from functional_itertools import CList
 from functional_itertools import CSet
@@ -25,18 +31,26 @@ from functional_itertools import EmptyIterableError
 from functional_itertools import MultipleElementsError
 from joblib import delayed
 from joblib import Parallel
+from numpy import bool_
+from numpy import datetime64
 from numpy import dtype
 from numpy import issubdtype
 from numpy import ma
 from numpy import memmap
+from numpy import nan
 from numpy import ndarray
+from numpy import number
 from numpy import str_
+from numpy import timedelta64
 from numpy import vectorize
 from numpy import zeros_like
 from numpy.ma import MaskedArray
+from numpy.testing import assert_array_equal
 from pandas import DataFrame
 from pandas import Index
 from pandas import Series
+from pandas import Timestamp
+from pandas.testing import assert_index_equal
 
 from joblib_windower.errors import InvalidDTypeError
 from joblib_windower.errors import InvalidLagError
@@ -46,19 +60,41 @@ from joblib_windower.errors import InvalidStepError
 from joblib_windower.errors import InvalidWindowError
 from joblib_windower.errors import NoSlicersError
 from joblib_windower.errors import NoWindowButMinFracProvidedError
-from joblib_windower.utilities import Arguments
-from joblib_windower.utilities import ArrayLike
-from joblib_windower.utilities import CPU_COUNT
-from joblib_windower.utilities import DEFAULT_STR_LEN_FACTOR
-from joblib_windower.utilities import get_unique_dtype
-from joblib_windower.utilities import IntOrSlice
-from joblib_windower.utilities import is_not_none
-from joblib_windower.utilities import pandas_obj_to_ndarray
-from joblib_windower.utilities import primitive_to_dtype
-from joblib_windower.utilities import TEMP_DIR
-from joblib_windower.utilities import width_to_str_dtype
+
 
 T = TypeVar("T")
+U = TypeVar("U")
+IntOrSlice = TypeVar("IntOrSlice", int, slice)
+NdarrayOrMaskedArray = TypeVar("NdarrayOrMaskedArray", ndarray, MaskedArray)
+CPU_COUNT = cpu_count()
+DEFAULT_STR_LEN_FACTOR = 100
+TEMP_DIR = gettempdir()
+NaT = Timestamp(nan)
+datetime64ns = dtype("datetime64[ns]")
+timedelta64ns = dtype("timedelta64[ns]")
+
+
+@attrs(eq=False)
+class Arguments(CAttrs[T]):
+    args: CTuple[T] = attrib(default=(), converter=CTuple)
+    kwargs: CDict[str, T] = attrib(default={}, converter=CDict)
+
+    def __eq__(self: Arguments, other: Arguments) -> bool:
+        return (
+            (len(self.args) == len(other.args))
+            and CIterable(self.args).zip(other.args).starmap(are_equal_objects).all()
+            and (set(self.kwargs) == set(other.kwargs))
+            and CDict(self.kwargs)
+            .map_items(lambda k, v: (k, are_equal_objects(v, other.kwargs[k])))
+            .values()
+            .all()
+        )
+
+    def all_values(self: Arguments[T]) -> CTuple[T]:
+        return self.args.chain(self.kwargs.values())
+
+    def map_values(self: Arguments[T], func: Callable[[T], U]) -> Arguments[U]:
+        return Arguments(args=self.args.map(func), kwargs=self.kwargs.map_values(func))
 
 
 @attrs(auto_attribs=True, frozen=True)
@@ -87,6 +123,33 @@ def apply_sliced(
         return result
     else:
         output[sliced.index] = result
+
+
+def are_equal_arrays(x: ndarray, y: ndarray) -> bool:
+    try:
+        assert_array_equal(x, y)
+    except AssertionError:
+        return False
+    else:
+        return x.dtype == y.dtype
+
+
+def are_equal_indices(x: Index, y: Index, *, check_names: bool = True) -> bool:
+    try:
+        assert_index_equal(x, y, check_names=check_names)
+    except AssertionError:
+        return False
+    else:
+        return True
+
+
+def are_equal_objects(x: Any, y: Any) -> bool:
+    if isinstance(x, ndarray) and isinstance(y, ndarray):
+        return are_equal_arrays(x, y)
+    elif isinstance(x, Index) and isinstance(y, Index):
+        return are_equal_indices(x, y)
+    else:
+        return x == y
 
 
 def get_maybe_ndarray_length(x: Any) -> Optional[int]:
@@ -175,6 +238,10 @@ def get_slicers(
     return slicers.list()
 
 
+def get_unique_dtype(dtypes: CSet[dtype]) -> dtype:
+    return merge_dtypes(dtypes).one()
+
+
 def get_unique_ndarray_length(arguments: Arguments) -> int:
     lengths = arguments.map_values(get_maybe_ndarray_length).all_values().filter(is_not_none).set()
     try:
@@ -184,6 +251,10 @@ def get_unique_ndarray_length(arguments: Arguments) -> int:
     except MultipleElementsError as error:
         (msg,) = error.args
         raise ValueError(f"Expect a unique ndarray length; got {msg}") from None
+
+
+def is_not_none(x: Any) -> bool:
+    return x is not None
 
 
 def maybe_replace_by_memmap(
@@ -206,6 +277,69 @@ def maybe_slice(x: Any, *, int_or_slice: Union[int, slice]) -> Any:
         return x[int_or_slice]
     else:
         return x
+
+
+def merge_dtypes(x: CSet[dtype]) -> CSet[dtype]:
+    not_str, is_str = x.partition(lambda x: issubdtype(x, str_))
+    if is_str:
+        return not_str.add(merge_str_dtypes(is_str))
+    else:
+        return not_str
+
+
+def merge_str_dtypes(x: CSet[dtype]) -> dtype:
+    return width_to_str_dtype(x.map(str_dtype_to_width).max())
+
+
+def pandas_obj_to_ndarray(
+    x: Union[Index, Series, DataFrame], *, str_len_factor: int = DEFAULT_STR_LEN_FACTOR,
+) -> ndarray:
+    if isinstance(x, (Index, Series)):
+        if x.dtype == object:
+            dtype = get_unique_dtype(
+                CList(x.dropna())
+                .map(partial(primitive_to_dtype, str_len_factor=str_len_factor))
+                .set(),
+            )
+            return x.to_numpy().astype(dtype)
+        else:
+            return x.to_numpy()
+    elif isinstance(x, DataFrame):
+        try:
+            dtype = CSet(x.dtypes).one()
+        except EmptyIterableError:
+            raise ValueError("Output DataFrame has no columns")
+        except MultipleElementsError:
+            raise ValueError("Output DataFrame has mixed dtypes")
+        else:
+            if dtype == object:
+                stacked = x.stack(dropna=False)
+                return pandas_obj_to_ndarray(stacked, str_len_factor=str_len_factor).reshape(
+                    x.shape,
+                )
+            else:
+                return x.to_numpy()
+    else:
+        raise TypeError(f"Invalid type: {type(x).__name__}")
+
+
+def primitive_to_dtype(value: Any, *, str_len_factor: int = DEFAULT_STR_LEN_FACTOR) -> dtype:
+    if isinstance(value, (bool, bool_)):
+        return dtype(bool)
+    elif isinstance(value, int):
+        return dtype(int)
+    elif isinstance(value, float):
+        return dtype(float)
+    elif isinstance(value, str):
+        return width_to_str_dtype(str_len_factor * len(value))
+    elif isinstance(value, (dt.date, datetime64)):
+        return datetime64ns
+    elif isinstance(value, (dt.timedelta, timedelta64)):
+        return timedelta64ns
+    elif isinstance(value, number):
+        return value.dtype
+    else:
+        raise TypeError(f"Invalid type: {type(value).__name__}")
 
 
 def slice_arguments(slicer: Slicer, *, arguments: Arguments) -> Sliced:
@@ -265,9 +399,17 @@ def slide_ndarrays(
         return trim_str_dtype(out_array)
 
 
-def trim_str_dtype(x: ArrayLike) -> ArrayLike:
+def str_dtype_to_width(x: dtype) -> int:
+    return int(search(r"^<U(\d+)$", x.str).group(1))
+
+
+def trim_str_dtype(x: NdarrayOrMaskedArray) -> NdarrayOrMaskedArray:
     if issubdtype(x.dtype, str_):
         max_width = numpy.max(vectorize(len)(x))
         return x.astype(width_to_str_dtype(max_width))
     else:
         return x
+
+
+def width_to_str_dtype(n: int) -> dtype:
+    return dtype(f"U{n}")

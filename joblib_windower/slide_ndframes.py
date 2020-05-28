@@ -33,17 +33,17 @@ from pandas import Series
 from pandas.testing import assert_index_equal
 
 from joblib_windower.errors import DistinctIndicesError
+from joblib_windower.slide_ndarrays import are_equal_indices
+from joblib_windower.slide_ndarrays import Arguments
+from joblib_windower.slide_ndarrays import CPU_COUNT
+from joblib_windower.slide_ndarrays import datetime64ns
+from joblib_windower.slide_ndarrays import DEFAULT_STR_LEN_FACTOR
+from joblib_windower.slide_ndarrays import is_not_none
+from joblib_windower.slide_ndarrays import NaT
+from joblib_windower.slide_ndarrays import pandas_obj_to_ndarray
 from joblib_windower.slide_ndarrays import slide_ndarrays
-from joblib_windower.utilities import are_equal_indices
-from joblib_windower.utilities import Arguments
-from joblib_windower.utilities import CPU_COUNT
-from joblib_windower.utilities import datetime64ns
-from joblib_windower.utilities import DEFAULT_STR_LEN_FACTOR
-from joblib_windower.utilities import is_not_none
-from joblib_windower.utilities import NaT
-from joblib_windower.utilities import pandas_obj_to_ndarray
-from joblib_windower.utilities import TEMP_DIR
-from joblib_windower.utilities import timedelta64ns
+from joblib_windower.slide_ndarrays import TEMP_DIR
+from joblib_windower.slide_ndarrays import timedelta64ns
 
 
 T = TypeVar("T")
