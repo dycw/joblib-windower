@@ -166,7 +166,7 @@ def get_ndframe_spec(x: dtype) -> NDFrameSpec:
 
 
 def masked_array_to_pandas_object(
-    array: MaskedArray, index: Optional[Index], name: Optional[Hashable], columns: Optional[Index],
+    array: MaskedArray, index: Index, name: Optional[Hashable], columns: Optional[Index],
 ) -> Union[Series, DataFrame]:
     spec = get_ndframe_spec(array.dtype)
     if array.ndim == 1:
@@ -174,10 +174,10 @@ def masked_array_to_pandas_object(
             ~array.mask, spec.masked,
         )
     elif array.ndim == 2:
-        m, n = array.shape
+        _, n = array.shape
         return DataFrame(
             data=array.data,
-            index=index if index is not None and len(index) == m else None,
+            index=index,
             columns=columns if columns is not None and len(columns) == n else None,
         ).where(~array.mask, spec.masked)
     elif array.ndim == 3:
