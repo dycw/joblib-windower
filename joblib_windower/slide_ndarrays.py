@@ -38,7 +38,6 @@ from joblib_windower.errors import NoWindowButMinFracProvidedError
 from joblib_windower.utilities import Arguments
 from joblib_windower.utilities import CPU_COUNT
 from joblib_windower.utilities import DEFAULT_STR_LEN_FACTOR
-from joblib_windower.utilities import get_maybe_ndarray_length
 from joblib_windower.utilities import get_output_spec
 from joblib_windower.utilities import IntOrSlice
 from joblib_windower.utilities import is_not_none
@@ -70,6 +69,14 @@ def apply_sliced(
         return result
     else:
         output[sliced.index] = result
+
+
+def get_maybe_ndarray_length(x: Any) -> Optional[int]:
+    if isinstance(x, ndarray):
+        length, *_ = x.shape
+        return length
+    else:
+        return None
 
 
 def get_output(spec: OutputSpec, temp_dir: Union[Path, str]) -> memmap:

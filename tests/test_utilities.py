@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import datetime as dt
 from typing import Any
-from typing import Optional
 
 from attr import attrs
 from functional_itertools import CList
@@ -18,7 +17,6 @@ from numpy import int32
 from numpy import int64
 from numpy import nan
 from numpy import ndarray
-from numpy import ones
 from numpy import timedelta64
 from pandas import DataFrame
 from pandas import Float64Index
@@ -33,7 +31,6 @@ from joblib_windower.utilities import are_equal_indices
 from joblib_windower.utilities import are_equal_objects
 from joblib_windower.utilities import datetime64ns
 from joblib_windower.utilities import DEFAULT_STR_LEN_FACTOR
-from joblib_windower.utilities import get_maybe_ndarray_length
 from joblib_windower.utilities import get_output_spec
 from joblib_windower.utilities import is_not_none
 from joblib_windower.utilities import merge_dtypes
@@ -68,13 +65,6 @@ def test_are_equal_arrays(x: ndarray, y: ndarray, expected: bool) -> None:
 )
 def test_are_equal_indices(x: Index, y: Index, check_names: bool, expected: bool) -> None:
     assert are_equal_indices(x, y, check_names=check_names) == expected
-
-
-@mark.parametrize(
-    "x, expected", [(None, None), (ones(3), 3), (ones((3, 4)), 3), (ones((3, 4, 5)), 3)],
-)
-def test_get_maybe_ndarray_length(x: Any, expected: Optional[int]) -> None:
-    assert get_maybe_ndarray_length(x) == expected
 
 
 @attrs(auto_attribs=True)

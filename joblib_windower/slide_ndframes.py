@@ -45,6 +45,7 @@ from joblib_windower.utilities import pandas_obj_to_ndarray
 from joblib_windower.utilities import TEMP_DIR
 from joblib_windower.utilities import timedelta64ns
 
+
 T = TypeVar("T")
 
 

@@ -7,7 +7,6 @@ from re import search
 from tempfile import gettempdir
 from typing import Any
 from typing import Callable
-from typing import Optional
 from typing import Sequence
 from typing import Tuple
 from typing import TypeVar
@@ -109,14 +108,6 @@ def are_equal_objects(x: Any, y: Any) -> bool:
         return are_equal_indices(x, y)
     else:
         return x == y
-
-
-def get_maybe_ndarray_length(x: Any) -> Optional[int]:
-    if isinstance(x, ndarray):
-        length, *_ = x.shape
-        return length
-    else:
-        return None
 
 
 def get_output_spec(
