@@ -7,25 +7,36 @@ from tempfile import TemporaryDirectory
 from typing import Any
 from typing import Callable
 from typing import Optional
+from typing import Sequence
+from typing import Tuple
 from typing import TypeVar
 from typing import Union
 
 import joblib
+import numpy
 from atomic_write_path import atomic_write_path
 from attr import attrs
 from functional_itertools import CAttrs
 from functional_itertools import CIterable
 from functional_itertools import CList
 from functional_itertools import CSet
+from functional_itertools import CTuple
 from functional_itertools import EmptyIterableError
 from functional_itertools import MultipleElementsError
 from joblib import delayed
 from joblib import Parallel
+from numpy import dtype
+from numpy import issubdtype
 from numpy import ma
 from numpy import memmap
 from numpy import ndarray
+from numpy import str_
+from numpy import vectorize
 from numpy import zeros_like
 from numpy.ma import MaskedArray
+from pandas import DataFrame
+from pandas import Index
+from pandas import Series
 
 from joblib_windower.errors import InvalidDTypeError
 from joblib_windower.errors import InvalidLagError
@@ -36,17 +47,24 @@ from joblib_windower.errors import InvalidWindowError
 from joblib_windower.errors import NoSlicersError
 from joblib_windower.errors import NoWindowButMinFracProvidedError
 from joblib_windower.utilities import Arguments
+from joblib_windower.utilities import ArrayLike
 from joblib_windower.utilities import CPU_COUNT
 from joblib_windower.utilities import DEFAULT_STR_LEN_FACTOR
-from joblib_windower.utilities import get_output_spec
+from joblib_windower.utilities import get_unique_dtype
 from joblib_windower.utilities import IntOrSlice
 from joblib_windower.utilities import is_not_none
-from joblib_windower.utilities import OutputSpec
+from joblib_windower.utilities import pandas_obj_to_ndarray
+from joblib_windower.utilities import primitive_to_dtype
 from joblib_windower.utilities import TEMP_DIR
-from joblib_windower.utilities import trim_str_dtype
-
+from joblib_windower.utilities import width_to_str_dtype
 
 T = TypeVar("T")
+
+
+@attrs(auto_attribs=True, frozen=True)
+class OutputSpec(CAttrs[IntOrSlice]):
+    dtype: dtype
+    shape: Tuple[int, ...]
 
 
 @attrs(auto_attribs=True, frozen=True)
@@ -86,6 +104,31 @@ def get_output(spec: OutputSpec, temp_dir: Union[Path, str]) -> memmap:
         mode="w+",
         shape=spec.shape,
     )
+
+
+def get_output_spec(
+    x: Any, length: int, *, str_len_factor: int = DEFAULT_STR_LEN_FACTOR,
+) -> OutputSpec:
+    try:
+        dtype = primitive_to_dtype(x, str_len_factor=str_len_factor)
+    except TypeError:
+        if isinstance(x, ndarray):
+            return OutputSpec(dtype=x.dtype, shape=CTuple([length]).chain(x.shape))
+        elif isinstance(x, (Index, Series, DataFrame)):
+            as_array = pandas_obj_to_ndarray(x, str_len_factor=str_len_factor)
+            return OutputSpec(dtype=as_array.dtype, shape=CTuple([length]).chain(x.shape))
+        elif isinstance(x, Sequence):
+            values_to_check = x
+        else:
+            raise TypeError(f"Invalid type: {type(x).__name__}") from None
+        dtypes = (
+            CList(values_to_check)
+            .map(partial(primitive_to_dtype, str_len_factor=str_len_factor))
+            .set()
+        )
+        return OutputSpec(dtype=get_unique_dtype(dtypes), shape=(length, len(x)))
+    else:
+        return OutputSpec(dtype=dtype, shape=(length,))
 
 
 def get_slicers(
@@ -220,3 +263,11 @@ def slide_ndarrays(
         is_valid[slicers.map(attrgetter("index"))] = True
         out_array = ma.array(data=output_data, dtype=output_data.dtype, mask=~is_valid)
         return trim_str_dtype(out_array)
+
+
+def trim_str_dtype(x: ArrayLike) -> ArrayLike:
+    if issubdtype(x.dtype, str_):
+        max_width = numpy.max(vectorize(len)(x))
+        return x.astype(width_to_str_dtype(max_width))
+    else:
+        return x

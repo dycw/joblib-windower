@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime as dt
 from functools import partial
 from typing import Any
 from typing import Callable
@@ -12,7 +13,15 @@ from attr import attrs
 from functional_itertools import CList
 from numpy import arange
 from numpy import array
+from numpy import dtype
+from numpy import float32
+from numpy import float64
+from numpy import int32
+from numpy import int64
+from numpy import nan
+from numpy import ndarray
 from numpy import ones
+from pandas import Series
 from pytest import mark
 from pytest import raises
 
@@ -23,13 +32,22 @@ from joblib_windower.errors import InvalidStepError
 from joblib_windower.errors import InvalidWindowError
 from joblib_windower.errors import NoWindowButMinFracProvidedError
 from joblib_windower.slide_ndarrays import get_maybe_ndarray_length
+from joblib_windower.slide_ndarrays import get_output_spec
 from joblib_windower.slide_ndarrays import get_slicers
 from joblib_windower.slide_ndarrays import maybe_slice
+from joblib_windower.slide_ndarrays import OutputSpec
 from joblib_windower.slide_ndarrays import slice_arguments
 from joblib_windower.slide_ndarrays import Sliced
 from joblib_windower.slide_ndarrays import Slicer
+from joblib_windower.slide_ndarrays import trim_str_dtype
+from joblib_windower.utilities import are_equal_arrays
 from joblib_windower.utilities import are_equal_objects
 from joblib_windower.utilities import Arguments
+from joblib_windower.utilities import datetime64ns
+from joblib_windower.utilities import DEFAULT_STR_LEN_FACTOR
+from joblib_windower.utilities import timedelta64ns
+from joblib_windower.utilities import width_to_str_dtype
+from tests.test_utilities import PRIMITIVE_TO_DTYPE_CASES
 
 
 @attrs(auto_attribs=True)
@@ -66,6 +84,69 @@ SLICE_CASES = CList(
 )
 def test_get_maybe_ndarray_length(x: Any, expected: Optional[int]) -> None:
     assert get_maybe_ndarray_length(x) == expected
+
+
+@mark.parametrize(
+    "value, expected",
+    PRIMITIVE_TO_DTYPE_CASES.map(lambda x: (x.value, OutputSpec(dtype=x.dtype, shape=(5,)))).chain(
+        [
+            # ndarrays
+            (array([0.0, 1.0]), OutputSpec(dtype=dtype(float), shape=(5, 2))),
+            (array([0.0, 1.0], dtype=float32), OutputSpec(dtype=dtype(float32), shape=(5, 2))),
+            (arange(6.0).reshape((2, 3)), OutputSpec(dtype=dtype(float), shape=(5, 2, 3))),
+            (
+                arange(6.0, dtype=float32).reshape((2, 3)),
+                OutputSpec(dtype=dtype(float32), shape=(5, 2, 3)),
+            ),
+            # sequences
+            ((True, False), OutputSpec(dtype=dtype(bool), shape=(5, 2))),
+            ((0, 1, 2), OutputSpec(dtype=dtype(int), shape=(5, 3))),
+            ((int32(0), int32(1), int32(2)), OutputSpec(dtype=dtype(int32), shape=(5, 3))),
+            ((int64(0), int64(1), int64(2)), OutputSpec(dtype=dtype(int64), shape=(5, 3))),
+            ((0.0, 1.0, 2.0), OutputSpec(dtype=dtype(float), shape=(5, 3))),
+            (
+                (float32(0.0), float32(1.0), float32(2.0)),
+                OutputSpec(dtype=dtype(float32), shape=(5, 3)),
+            ),
+            (
+                (float64(0.0), float64(1.0), float64(2.0)),
+                OutputSpec(dtype=dtype(float64), shape=(5, 3)),
+            ),
+            (
+                ["a", "b", "c"],
+                OutputSpec(dtype=width_to_str_dtype(DEFAULT_STR_LEN_FACTOR), shape=(5, 3)),
+            ),
+            (
+                ["a", "ab", "abc"],
+                OutputSpec(dtype=width_to_str_dtype(3 * DEFAULT_STR_LEN_FACTOR), shape=(5, 3)),
+            ),
+            (
+                [dt.date.today(), dt.date.today() + dt.timedelta(days=1)],
+                OutputSpec(dtype=datetime64ns, shape=(5, 2)),
+            ),
+            (
+                [dt.timedelta(), dt.timedelta(days=1), dt.timedelta(days=2)],
+                OutputSpec(dtype=timedelta64ns, shape=(5, 3)),
+            ),
+            # series
+            (Series([True, False]), OutputSpec(dtype=dtype(bool), shape=(5, 2))),
+            (Series([True, False, nan]), OutputSpec(dtype=dtype(bool), shape=(5, 3))),
+            (Series([0, 1, 2]), OutputSpec(dtype=dtype(int), shape=(5, 3))),
+            (Series([0.0, 1.0, 2.0]), OutputSpec(dtype=dtype(float), shape=(5, 3))),
+            (Series([0.0, 1.0, 2.0, nan]), OutputSpec(dtype=dtype(float), shape=(5, 4))),
+            (
+                Series(["a", "b", "c"]),
+                OutputSpec(dtype=width_to_str_dtype(DEFAULT_STR_LEN_FACTOR), shape=(5, 3)),
+            ),
+            (
+                Series(["a", "b", "c", nan]),
+                OutputSpec(dtype=width_to_str_dtype(DEFAULT_STR_LEN_FACTOR), shape=(5, 4)),
+            ),
+        ],
+    ),
+)
+def test_get_output_spec(value: Any, expected: OutputSpec) -> None:
+    assert get_output_spec(value, 5) == expected
 
 
 @mark.parametrize(
@@ -328,3 +409,14 @@ def test_maybe_slice(case: SliceCase) -> None:
 )
 def test_slice_arguments(slicer: Slicer, arguments: Arguments, expected: Sliced) -> None:
     assert slice_arguments(slicer, arguments=arguments) == expected
+
+
+@mark.parametrize(
+    "x, expected",
+    [
+        (array([0, 1, 2], dtype=int), array([0, 1, 2], dtype=int)),
+        (array(["a", "b", "c"], dtype="U100"), array(["a", "b", "c"], dtype="U1")),
+    ],
+)
+def test_trim_str_dtype(x: ndarray, expected: ndarray) -> None:
+    assert are_equal_arrays(trim_str_dtype(x), expected)

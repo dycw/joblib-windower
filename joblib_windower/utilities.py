@@ -7,12 +7,9 @@ from re import search
 from tempfile import gettempdir
 from typing import Any
 from typing import Callable
-from typing import Sequence
-from typing import Tuple
 from typing import TypeVar
 from typing import Union
 
-import numpy
 from attr import attrib
 from attr import attrs
 from functional_itertools import CAttrs
@@ -32,7 +29,6 @@ from numpy import ndarray
 from numpy import number
 from numpy import str_
 from numpy import timedelta64
-from numpy import vectorize
 from numpy.ma import MaskedArray
 from numpy.testing import assert_array_equal
 from pandas import DataFrame
@@ -77,12 +73,6 @@ class Arguments(CAttrs[T]):
         return Arguments(args=self.args.map(func), kwargs=self.kwargs.map_values(func))
 
 
-@attrs(auto_attribs=True, frozen=True)
-class OutputSpec(CAttrs[IntOrSlice]):
-    dtype: dtype
-    shape: Tuple[int, ...]
-
-
 def are_equal_arrays(x: ndarray, y: ndarray) -> bool:
     try:
         assert_array_equal(x, y)
@@ -108,31 +98,6 @@ def are_equal_objects(x: Any, y: Any) -> bool:
         return are_equal_indices(x, y)
     else:
         return x == y
-
-
-def get_output_spec(
-    x: Any, length: int, *, str_len_factor: int = DEFAULT_STR_LEN_FACTOR,
-) -> OutputSpec:
-    try:
-        dtype = primitive_to_dtype(x, str_len_factor=str_len_factor)
-    except TypeError:
-        if isinstance(x, ndarray):
-            return OutputSpec(dtype=x.dtype, shape=CTuple([length]).chain(x.shape))
-        elif isinstance(x, (Index, Series, DataFrame)):
-            as_array = pandas_obj_to_ndarray(x, str_len_factor=str_len_factor)
-            return OutputSpec(dtype=as_array.dtype, shape=CTuple([length]).chain(x.shape))
-        elif isinstance(x, Sequence):
-            values_to_check = x
-        else:
-            raise TypeError(f"Invalid type: {type(x).__name__}") from None
-        dtypes = (
-            CList(values_to_check)
-            .map(partial(primitive_to_dtype, str_len_factor=str_len_factor))
-            .set()
-        )
-        return OutputSpec(dtype=get_unique_dtype(dtypes), shape=(length, len(x)))
-    else:
-        return OutputSpec(dtype=dtype, shape=(length,))
 
 
 def get_unique_dtype(dtypes: CSet[dtype]) -> dtype:
@@ -208,14 +173,6 @@ def primitive_to_dtype(value: Any, *, str_len_factor: int = DEFAULT_STR_LEN_FACT
 
 def str_dtype_to_width(x: dtype) -> int:
     return int(search(r"^<U(\d+)$", x.str).group(1))
-
-
-def trim_str_dtype(x: ArrayLike) -> ArrayLike:
-    if issubdtype(x.dtype, str_):
-        max_width = numpy.max(vectorize(len)(x))
-        return x.astype(width_to_str_dtype(max_width))
-    else:
-        return x
 
 
 def width_to_str_dtype(n: int) -> dtype:
