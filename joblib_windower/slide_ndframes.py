@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 from typing import Callable
 from typing import Hashable
+from typing import Iterable
 from typing import Optional
 from typing import Tuple
 from typing import TypeVar
@@ -31,16 +32,19 @@ from pandas import Index
 from pandas import Series
 from pandas.testing import assert_index_equal
 
+from joblib_windower.errors import DistinctIndicesError
+from joblib_windower.slide_ndarrays import are_equal_indices
+from joblib_windower.slide_ndarrays import Arguments
+from joblib_windower.slide_ndarrays import CPU_COUNT
+from joblib_windower.slide_ndarrays import datetime64ns
+from joblib_windower.slide_ndarrays import DEFAULT_STR_LEN_FACTOR
+from joblib_windower.slide_ndarrays import is_not_none
+from joblib_windower.slide_ndarrays import NaT
+from joblib_windower.slide_ndarrays import pandas_obj_to_ndarray
 from joblib_windower.slide_ndarrays import slide_ndarrays
-from joblib_windower.utilities import Arguments
-from joblib_windower.utilities import CPU_COUNT
-from joblib_windower.utilities import datetime64ns
-from joblib_windower.utilities import DEFAULT_STR_LEN_FACTOR
-from joblib_windower.utilities import is_not_none
-from joblib_windower.utilities import NaT
-from joblib_windower.utilities import pandas_obj_to_ndarray
-from joblib_windower.utilities import TEMP_DIR
-from joblib_windower.utilities import timedelta64ns
+from joblib_windower.slide_ndarrays import TEMP_DIR
+from joblib_windower.slide_ndarrays import timedelta64ns
+
 
 T = TypeVar("T")
 
@@ -127,16 +131,27 @@ def get_maybe_unique_series_name(arguments: Arguments) -> Optional[Hashable]:
 def get_maybe_unique_ndframe_index(arguments: Arguments) -> Optional[Index]:
     indices = arguments.map_values(get_maybe_ndframe_index).all_values().filter(is_not_none)
     if indices:
-        try:
-            for index1, index2 in indices.combinations(2):
-                assert_index_equal(index1, index2)
-        except AssertionError:
-            return None
-        else:
-            index, *_ = indices
-            return index
+        return get_unique_index(*indices)
     else:
         raise ValueError("Expected at least 1 Series or DataFrame; got none")
+
+
+def get_unique_index(indices: Iterable[Index]) -> Index:
+    indices = CList(indices)
+    pairs = indices.combinations(2)
+    if pairs.starmap(lambda x, y: are_equal_indices(x, y, check_names=True)).all():
+        index, *_ = indices
+        return index
+    else:
+        unequal, equal = pairs.partition(
+            lambda x: are_equal_indices(x[0], x[1], check_names=False),
+        )
+        if unequal:
+            (x, y), *_ = unequal
+            raise DistinctIndicesError(x, y)
+        else:
+            index, *_ = indices
+            return index.rename(None)
 
 
 def get_ndframe_spec(x: dtype) -> NDFrameSpec:
@@ -159,10 +174,10 @@ def masked_array_to_pandas_object(
             ~array.mask, spec.masked,
         )
     elif array.ndim == 2:
-        m, n = array.shape
+        _, n = array.shape
         return DataFrame(
             data=array.data,
-            index=index if len(index) == m else None,
+            index=index,
             columns=columns if columns is not None and len(columns) == n else None,
         ).where(~array.mask, spec.masked)
     elif array.ndim == 3:
