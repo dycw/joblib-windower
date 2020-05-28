@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 
+class DistinctIndicesError(ValueError):
+    """Raised when there is no unique index."""
+
+
 class InvalidDTypeError(ValueError):
     """Raised when the dtype is invalid."""
 

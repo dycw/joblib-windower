@@ -7,6 +7,7 @@ from re import search
 from tempfile import gettempdir
 from typing import Any
 from typing import Callable
+from typing import Optional
 from typing import Sequence
 from typing import Tuple
 from typing import TypeVar
@@ -39,6 +40,8 @@ from pandas import DataFrame
 from pandas import Index
 from pandas import Series
 from pandas import Timestamp
+from pandas.testing import assert_index_equal
+
 
 ArrayLike = TypeVar("ArrayLike", ndarray, MaskedArray)
 IntOrSlice = TypeVar("IntOrSlice", int, slice)
@@ -90,11 +93,30 @@ def are_equal_arrays(x: ndarray, y: ndarray) -> bool:
         return x.dtype == y.dtype
 
 
+def are_equal_indices(x: Index, y: Index, *, check_names: bool = True) -> bool:
+    try:
+        assert_index_equal(x, y, check_names=check_names)
+    except AssertionError:
+        return False
+    else:
+        return True
+
+
 def are_equal_objects(x: Any, y: Any) -> bool:
     if isinstance(x, ndarray) and isinstance(y, ndarray):
         return are_equal_arrays(x, y)
+    elif isinstance(x, Index) and isinstance(y, Index):
+        return are_equal_indices(x, y)
     else:
         return x == y
+
+
+def get_maybe_ndarray_length(x: Any) -> Optional[int]:
+    if isinstance(x, ndarray):
+        length, *_ = x.shape
+        return length
+    else:
+        return None
 
 
 def get_output_spec(

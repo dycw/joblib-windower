@@ -4,7 +4,6 @@ from functools import partial
 from typing import Any
 from typing import Callable
 from typing import List
-from typing import Optional
 from typing import Type
 from typing import Union
 
@@ -12,7 +11,6 @@ from attr import attrs
 from functional_itertools import CList
 from numpy import arange
 from numpy import array
-from numpy import ones
 from pytest import mark
 from pytest import raises
 
@@ -22,7 +20,6 @@ from joblib_windower.errors import InvalidMinFracError
 from joblib_windower.errors import InvalidStepError
 from joblib_windower.errors import InvalidWindowError
 from joblib_windower.errors import NoWindowButMinFracProvidedError
-from joblib_windower.slide_ndarrays import get_maybe_ndarray_length
 from joblib_windower.slide_ndarrays import get_slicers
 from joblib_windower.slide_ndarrays import maybe_slice
 from joblib_windower.slide_ndarrays import slice_arguments
@@ -59,13 +56,6 @@ SLICE_CASES = CList(
         ),
     ],
 )
-
-
-@mark.parametrize(
-    "x, expected", [(None, None), (ones(3), 3), (ones((3, 4)), 3), (ones((3, 4, 5)), 3)],
-)
-def test_get_maybe_ndarray_length(x: Any, expected: Optional[int]) -> None:
-    assert get_maybe_ndarray_length(x) == expected
 
 
 @mark.parametrize(

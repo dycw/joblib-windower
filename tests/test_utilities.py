@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import datetime as dt
 from typing import Any
+from typing import Optional
 
 from attr import attrs
 from functional_itertools import CList
 from functional_itertools import CSet
+from numpy import arange
 from numpy import array
 from numpy import bool_
 from numpy import datetime64
@@ -16,8 +18,8 @@ from numpy import int32
 from numpy import int64
 from numpy import nan
 from numpy import ndarray
+from numpy import ones
 from numpy import timedelta64
-from numpy.ma import arange
 from pandas import DataFrame
 from pandas import Float64Index
 from pandas import Index
@@ -27,9 +29,11 @@ from pytest import mark
 
 from joblib_windower.slide_ndarrays import OutputSpec
 from joblib_windower.utilities import are_equal_arrays
+from joblib_windower.utilities import are_equal_indices
 from joblib_windower.utilities import are_equal_objects
 from joblib_windower.utilities import datetime64ns
 from joblib_windower.utilities import DEFAULT_STR_LEN_FACTOR
+from joblib_windower.utilities import get_maybe_ndarray_length
 from joblib_windower.utilities import get_output_spec
 from joblib_windower.utilities import is_not_none
 from joblib_windower.utilities import merge_dtypes
@@ -40,6 +44,37 @@ from joblib_windower.utilities import str_dtype_to_width
 from joblib_windower.utilities import timedelta64ns
 from joblib_windower.utilities import trim_str_dtype
 from joblib_windower.utilities import width_to_str_dtype
+
+
+@mark.parametrize(
+    "x, y, expected",
+    [
+        (array([0, 1, 2], dtype=int), array([0, 1, 2], dtype=int), True),
+        (array([0, 1, 2], dtype=int), array([0.0, 1.0, 2.0], dtype=float), False),
+        (array([0, 1, 2], dtype=int), array([0, 1, 2, 3, 4], dtype=int), False),
+    ],
+)
+def test_are_equal_arrays(x: ndarray, y: ndarray, expected: bool) -> None:
+    assert are_equal_arrays(x, y) == expected
+
+
+@mark.parametrize(
+    "x, y, check_names, expected",
+    [
+        (Index(list("abc")), Index(list("abc")), True, True),
+        (Index(list("abc"), name="x"), Index(list("abc"), name="y"), False, True),
+        (Index(list("abc")), Index(list("xyz")), True, False),
+    ],
+)
+def test_are_equal_indices(x: Index, y: Index, check_names: bool, expected: bool) -> None:
+    assert are_equal_indices(x, y, check_names=check_names) == expected
+
+
+@mark.parametrize(
+    "x, expected", [(None, None), (ones(3), 3), (ones((3, 4)), 3), (ones((3, 4, 5)), 3)],
+)
+def test_get_maybe_ndarray_length(x: Any, expected: Optional[int]) -> None:
+    assert get_maybe_ndarray_length(x) == expected
 
 
 @attrs(auto_attribs=True)
