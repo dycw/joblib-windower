@@ -1,7 +1,7 @@
 name: joblib-windower
 
 dependencies:
-  - python=3.7.*
+  - python=3.8.*
   - bump2version
   - pre-commit
   - pip
