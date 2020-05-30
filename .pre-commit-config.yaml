@@ -1,28 +1,55 @@
 repos:
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v2.5.0
+  - repo: https://github.com/andreoliwa/nitpick
+    rev: v0.22.2
     hooks:
-      - id: check-executables-have-shebangs
-      - id: check-merge-conflict
-      - id: check-json
-      - id: check-toml
-      - id: check-xml
-      - id: check-yaml
-      - id: end-of-file-fixer
-      - id: mixed-line-ending
-        args: [--fix=lf]
-      - id: no-commit-to-branch
-      - id: pretty-format-json
-      - id: trailing-whitespace
+      - id: nitpick
 
-  - repo: https://github.com/dycw/pre-commit-hooks
-    rev: 1.0.36
+  - repo: https://github.com/asottile/add-trailing-comma
+    rev: v2.0.1
     hooks:
       - id: add-trailing-comma
-      - id: autoflake
-      - id: black
+        args: [--py36-plus]
+
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v2.4.4
+    hooks:
       - id: pyupgrade
+        args: [--py38-plus]
+
+  - repo: https://github.com/asottile/reorder_python_imports
+    rev: v2.3.0
+    hooks:
       - id: reorder-python-imports
+        args: [--py37-plus]
+
+  - repo: https://github.com/asottile/yesqa
+    rev: v1.1.0
+    hooks:
       - id: yesqa
-      - id: dead
-      - id: flake8
+
+  - repo: https://github.com/humitos/mirrors-autoflake
+    rev: v1.1
+    hooks:
+      - id: autoflake
+        args: [--in-place, --remove-all-unused-imports, --remove-duplicate-keys, --remove-unused-variable]
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v3.1.0
+    hooks:
+    - id: check-executables-have-shebangs
+    - id: check-merge-conflict
+    - id: check-json
+    - id: check-toml
+    - id: check-xml
+    - id: check-yaml
+    - id: end-of-file-fixer
+    - id: mixed-line-ending
+      args: [--fix=lf]
+    - id: no-commit-to-branch
+    - id: pretty-format-json
+    - id: trailing-whitespace
+
+  - repo: https://github.com/psf/black
+    rev: 19.10b0
+    hooks:
+      - id: black
