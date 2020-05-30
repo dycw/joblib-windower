@@ -72,10 +72,14 @@ class SeriesMetadata:
     index_name: Hashable
 
 
-def call_with_packing(keys: CTuple[Optional[str]], func: Callable[..., T], *args: Any) -> T:
+def call_with_packing(
+    keys: CTuple[Optional[str]], func: Callable[..., T], *args: Any,
+) -> T:
     packed = CTuple(args).grouper(3).map(pack_argument)
     is_kwargs, is_args = keys.zip(packed).partition(lambda x: x[0] is None)
-    arguments = Arguments(args=is_args.map(itemgetter(1)), kwargs=is_kwargs.dict())
+    arguments = Arguments(
+        args=is_args.map(itemgetter(1)), kwargs=is_kwargs.dict(),
+    )
     return func(*arguments.args, **arguments.kwargs)
 
 
@@ -121,7 +125,12 @@ def get_maybe_unique_dataframe_columns(arguments: Arguments) -> Optional[Index]:
 
 
 def get_maybe_unique_series_name(arguments: Arguments) -> Optional[Hashable]:
-    names = arguments.map_values(get_maybe_series_name).all_values().filter(is_not_none).set()
+    names = (
+        arguments.map_values(get_maybe_series_name)
+        .all_values()
+        .filter(is_not_none)
+        .set()
+    )
     try:
         return names.one()
     except (EmptyIterableError, MultipleElementsError):
@@ -129,7 +138,11 @@ def get_maybe_unique_series_name(arguments: Arguments) -> Optional[Hashable]:
 
 
 def get_maybe_unique_ndframe_index(arguments: Arguments) -> Optional[Index]:
-    indices = arguments.map_values(get_maybe_ndframe_index).all_values().filter(is_not_none)
+    indices = (
+        arguments.map_values(get_maybe_ndframe_index)
+        .all_values()
+        .filter(is_not_none)
+    )
     if indices:
         return get_unique_index(*indices)
     else:
@@ -139,7 +152,9 @@ def get_maybe_unique_ndframe_index(arguments: Arguments) -> Optional[Index]:
 def get_unique_index(indices: Iterable[Index]) -> Index:
     indices = CList(indices)
     pairs = indices.combinations(2)
-    if pairs.starmap(lambda x, y: are_equal_indices(x, y, check_names=True)).all():
+    if pairs.starmap(
+        lambda x, y: are_equal_indices(x, y, check_names=True),
+    ).all():
         index, *_ = indices
         return index
     else:
@@ -166,19 +181,24 @@ def get_ndframe_spec(x: dtype) -> NDFrameSpec:
 
 
 def masked_array_to_pandas_object(
-    array: MaskedArray, index: Index, name: Optional[Hashable], columns: Optional[Index],
+    array: MaskedArray,
+    index: Index,
+    name: Optional[Hashable],
+    columns: Optional[Index],
 ) -> Union[Series, DataFrame]:
     spec = get_ndframe_spec(array.dtype)
     if array.ndim == 1:
-        return Series(data=array.data, index=index, dtype=spec.dtype, name=name).where(
-            ~array.mask, spec.masked,
-        )
+        return Series(
+            data=array.data, index=index, dtype=spec.dtype, name=name,
+        ).where(~array.mask, spec.masked)
     elif array.ndim == 2:
         _, n = array.shape
         return DataFrame(
             data=array.data,
             index=index,
-            columns=columns if columns is not None and len(columns) == n else None,
+            columns=columns
+            if columns is not None and len(columns) == n
+            else None,
         ).where(~array.mask, spec.masked)
     elif array.ndim == 3:
         length, *_ = array.shape
@@ -194,7 +214,9 @@ def masked_array_to_pandas_object(
 
 def pack_argument(
     data: Tuple[
-        Optional[Union[IndexMetadata, SeriesMetadata, DataFrameMetadata]], Any, Optional[ndarray],
+        Optional[Union[IndexMetadata, SeriesMetadata, DataFrameMetadata]],
+        Any,
+        Optional[ndarray],
     ],
 ) -> Any:
     metadata, x, maybe_index = data
@@ -203,14 +225,18 @@ def pack_argument(
     elif isinstance(metadata, SeriesMetadata):
         if isinstance(maybe_index, ndarray):
             return Series(
-                x, index=Index(maybe_index, name=metadata.index_name), name=metadata.name,
+                x,
+                index=Index(maybe_index, name=metadata.index_name),
+                name=metadata.name,
             )
         else:
             return x
     elif isinstance(metadata, DataFrameMetadata):
         if isinstance(maybe_index, ndarray):
             return DataFrame(
-                x, index=Index(maybe_index, name=metadata.index_name), columns=metadata.columns,
+                x,
+                index=Index(maybe_index, name=metadata.index_name),
+                columns=metadata.columns,
             )
         else:
             return Series(x, index=metadata.columns, name=maybe_index)
@@ -249,7 +275,9 @@ def slide_ndframes(
         parallel=parallel,
         processes=processes,
     )
-    return masked_array_to_pandas_object(masked_array, index, maybe_name, maybe_columns)
+    return masked_array_to_pandas_object(
+        masked_array, index, maybe_name, maybe_columns,
+    )
 
 
 def unpack_argument(x: Any) -> Tuple[Any, Any, Optional[ndarray]]:
@@ -264,7 +292,9 @@ def unpack_argument(x: Any) -> Tuple[Any, Any, Optional[ndarray]]:
         return None, x, None
 
 
-def unpack_dataframe(x: DataFrame) -> Tuple[DataFrameMetadata, ndarray, ndarray]:
+def unpack_dataframe(
+    x: DataFrame,
+) -> Tuple[DataFrameMetadata, ndarray, ndarray]:
     return (
         DataFrameMetadata(index_name=x.index.name, columns=x.columns),
         pandas_obj_to_ndarray(x),

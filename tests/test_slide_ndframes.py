@@ -37,10 +37,15 @@ from joblib_windower.slide_ndframes import NDFrameSpec
         (None, None),
         (Index([0, 1, 2]), None),
         (Series(0, index=list("abc")), None),
-        (DataFrame(0, index=list("abc"), columns=list("xyz")), Index(list("xyz"))),
+        (
+            DataFrame(0, index=list("abc"), columns=list("xyz")),
+            Index(list("xyz")),
+        ),
     ],
 )
-def test_get_maybe_dataframe_columns(obj: Any, expected: Optional[Index]) -> None:
+def test_get_maybe_dataframe_columns(
+    obj: Any, expected: Optional[Index],
+) -> None:
     result = get_maybe_dataframe_columns(obj)
     if isinstance(result, Index) and isinstance(expected, Index):
         assert_index_equal(result, expected)
@@ -55,7 +60,10 @@ def test_get_maybe_dataframe_columns(obj: Any, expected: Optional[Index]) -> Non
         (None, None),
         (Index([0, 1, 2]), None),
         (Series(0, index=list("abc")), Index(list("abc"))),
-        (DataFrame(0, index=list("abc"), columns=list("xyz")), Index(list("abc"))),
+        (
+            DataFrame(0, index=list("abc"), columns=list("xyz")),
+            Index(list("abc")),
+        ),
     ],
 )
 def test_get_maybe_ndframe_index(obj: Any, expected: Optional[Index]) -> None:
@@ -91,7 +99,10 @@ def test_get_ndframe_spec(dtype: dtype, expected: NDFrameSpec) -> None:
     [
         ([Index(list("abc"))], Index(list("abc"))),
         ([Index(list("abc")), Index(list("abc"))], Index(list("abc"))),
-        ([Index(list("abc"), name="x"), Index(list("abc"), name="y")], Index(list("abc"))),
+        (
+            [Index(list("abc"), name="x"), Index(list("abc"), name="y")],
+            Index(list("abc")),
+        ),
         ([Index(list("abc")), Index(list("xyz"))], DistinctIndicesError),
     ],
 )
