@@ -1,0 +1,6 @@
+[tool.black]
+line-length = 80
+target-version = ["py38"]
+
+[tool.nitpick]
+style = "https://raw.githubusercontent.com/dycw/nitpick/master/nitpick-style.toml"

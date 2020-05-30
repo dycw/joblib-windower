@@ -82,7 +82,10 @@ class Arguments(CAttrs[T]):
     def __eq__(self: Arguments, other: Arguments) -> bool:
         return (
             (len(self.args) == len(other.args))
-            and CIterable(self.args).zip(other.args).starmap(are_equal_objects).all()
+            and CIterable(self.args)
+            .zip(other.args)
+            .starmap(are_equal_objects)
+            .all()
             and (set(self.kwargs) == set(other.kwargs))
             and CDict(self.kwargs)
             .map_items(lambda k, v: (k, are_equal_objects(v, other.kwargs[k])))
@@ -94,7 +97,9 @@ class Arguments(CAttrs[T]):
         return self.args.chain(self.kwargs.values())
 
     def map_values(self: Arguments[T], func: Callable[[T], U]) -> Arguments[U]:
-        return Arguments(args=self.args.map(func), kwargs=self.kwargs.map_values(func))
+        return Arguments(
+            args=self.args.map(func), kwargs=self.kwargs.map_values(func),
+        )
 
 
 @attrs(auto_attribs=True, frozen=True)
@@ -176,10 +181,14 @@ def get_output_spec(
         dtype = primitive_to_dtype(x, str_len_factor=str_len_factor)
     except TypeError:
         if isinstance(x, ndarray):
-            return OutputSpec(dtype=x.dtype, shape=CTuple([length]).chain(x.shape))
+            return OutputSpec(
+                dtype=x.dtype, shape=CTuple([length]).chain(x.shape),
+            )
         elif isinstance(x, (Index, Series, DataFrame)):
             as_array = pandas_obj_to_ndarray(x, str_len_factor=str_len_factor)
-            return OutputSpec(dtype=as_array.dtype, shape=CTuple([length]).chain(x.shape))
+            return OutputSpec(
+                dtype=as_array.dtype, shape=CTuple([length]).chain(x.shape),
+            )
         elif isinstance(x, Sequence):
             values_to_check = x
         else:
@@ -189,7 +198,9 @@ def get_output_spec(
             .map(partial(primitive_to_dtype, str_len_factor=str_len_factor))
             .set()
         )
-        return OutputSpec(dtype=get_unique_dtype(dtypes), shape=(length, len(x)))
+        return OutputSpec(
+            dtype=get_unique_dtype(dtypes), shape=(length, len(x)),
+        )
     else:
         return OutputSpec(dtype=dtype, shape=(length,))
 
@@ -219,19 +230,30 @@ def get_slicers(
     pairs = indices.zip(stops).starfilter(lambda x, _: x in valid_indices)
     if window is None:
         if min_frac is None:
-            slicers = pairs.starfilter(lambda _, y: 0 <= y < length).starmap(Slicer)
+            slicers = pairs.starfilter(lambda _, y: 0 <= y < length).starmap(
+                Slicer,
+            )
         else:
-            raise NoWindowButMinFracProvidedError(f"window = {window}; min_frac = {min_frac}")
+            raise NoWindowButMinFracProvidedError(
+                f"window = {window}; min_frac = {min_frac}",
+            )
     else:
         slicers = (
-            pairs.starmap(lambda x, y: (x, max(y - window + 1, 0), min(y + 1, length)))
+            pairs.starmap(
+                lambda x, y: (x, max(y - window + 1, 0), min(y + 1, length)),
+            )
             .starfilter(lambda _, start, stop: (stop - start) >= 1)
-            .starmap(lambda x, start, stop: Slicer(index=x, int_or_slice=slice(start, stop)))
+            .starmap(
+                lambda x, start, stop: Slicer(
+                    index=x, int_or_slice=slice(start, stop),
+                ),
+            )
         )
         if min_frac is not None:
             if isinstance(min_frac, float) and (0.0 <= min_frac <= 1):
                 slicers = slicers.filter(
-                    lambda x: (x.int_or_slice.stop - x.int_or_slice.start) >= (min_frac * window),
+                    lambda x: (x.int_or_slice.stop - x.int_or_slice.start)
+                    >= (min_frac * window),
                 )
             else:
                 raise InvalidMinFracError(f"min_frac = {min_frac}")
@@ -243,7 +265,12 @@ def get_unique_dtype(dtypes: CSet[dtype]) -> dtype:
 
 
 def get_unique_ndarray_length(arguments: Arguments) -> int:
-    lengths = arguments.map_values(get_maybe_ndarray_length).all_values().filter(is_not_none).set()
+    lengths = (
+        arguments.map_values(get_maybe_ndarray_length)
+        .all_values()
+        .filter(is_not_none)
+        .set()
+    )
     try:
         return lengths.one()
     except EmptyIterableError:
@@ -292,7 +319,9 @@ def merge_str_dtypes(x: CSet[dtype]) -> dtype:
 
 
 def pandas_obj_to_ndarray(
-    x: Union[Index, Series, DataFrame], *, str_len_factor: int = DEFAULT_STR_LEN_FACTOR,
+    x: Union[Index, Series, DataFrame],
+    *,
+    str_len_factor: int = DEFAULT_STR_LEN_FACTOR,
 ) -> ndarray:
     if isinstance(x, (Index, Series)):
         if x.dtype == object:
@@ -314,16 +343,18 @@ def pandas_obj_to_ndarray(
         else:
             if dtype == object:
                 stacked = x.stack(dropna=False)
-                return pandas_obj_to_ndarray(stacked, str_len_factor=str_len_factor).reshape(
-                    x.shape,
-                )
+                return pandas_obj_to_ndarray(
+                    stacked, str_len_factor=str_len_factor,
+                ).reshape(x.shape)
             else:
                 return x.to_numpy()
     else:
         raise TypeError(f"Invalid type: {type(x).__name__}")
 
 
-def primitive_to_dtype(value: Any, *, str_len_factor: int = DEFAULT_STR_LEN_FACTOR) -> dtype:
+def primitive_to_dtype(
+    value: Any, *, str_len_factor: int = DEFAULT_STR_LEN_FACTOR,
+) -> dtype:
     if isinstance(value, (bool, bool_)):
         return dtype(bool)
     elif isinstance(value, int):
@@ -345,7 +376,9 @@ def primitive_to_dtype(value: Any, *, str_len_factor: int = DEFAULT_STR_LEN_FACT
 def slice_arguments(slicer: Slicer, *, arguments: Arguments) -> Sliced:
     return Sliced(
         index=slicer.index,
-        arguments=arguments.map_values(partial(maybe_slice, int_or_slice=slicer.int_or_slice)),
+        arguments=arguments.map_values(
+            partial(maybe_slice, int_or_slice=slicer.int_or_slice),
+        ),
     )
 
 
@@ -364,38 +397,51 @@ def slide_ndarrays(
 ) -> MaskedArray:
     arguments = Arguments(args=args, kwargs=kwargs)
     length = get_unique_ndarray_length(arguments)
-    slicers = get_slicers(length, window=window, lag=lag, step=step, min_frac=min_frac)
+    slicers = get_slicers(
+        length, window=window, lag=lag, step=step, min_frac=min_frac,
+    )
     if not slicers:
         raise NoSlicersError(f"slicers = {slicers}")
 
     Path(temp_dir).mkdir(parents=True, exist_ok=True)
     with TemporaryDirectory(dir=temp_dir) as td:
         # replace arguments
-        maybe_replace_by_memmap_td = partial(maybe_replace_by_memmap, temp_dir=td)
+        maybe_replace_by_memmap_td = partial(
+            maybe_replace_by_memmap, temp_dir=td,
+        )
         replaced = Arguments(
             args=arguments.args.enumerate().starmap(maybe_replace_by_memmap_td),
-            kwargs=arguments.kwargs.map_items(lambda k, v: (k, maybe_replace_by_memmap_td(k, v))),
+            kwargs=arguments.kwargs.map_items(
+                lambda k, v: (k, maybe_replace_by_memmap_td(k, v)),
+            ),
         )
 
         # slice arguments
-        sliced: CList[Sliced] = slicers.map(partial(slice_arguments, arguments=replaced))
+        sliced: CList[Sliced] = slicers.map(
+            partial(slice_arguments, arguments=replaced),
+        )
 
         # apply last
         last_sliced = sliced[-1]
         last_result = apply_sliced(last_sliced, func=func)
-        spec = get_output_spec(last_result, length, str_len_factor=str_len_factor)
+        spec = get_output_spec(
+            last_result, length, str_len_factor=str_len_factor,
+        )
         output_data = get_output(spec, temp_dir=td)
         output_data[last_sliced.index] = last_result
 
         # apply rest
         Parallel(n_jobs=processes if parallel else None)(
-            delayed(apply_sliced)(s, func=func, output=output_data) for s in sliced[:-1]
+            delayed(apply_sliced)(s, func=func, output=output_data)
+            for s in sliced[:-1]
         )
 
         # build MA
         is_valid = zeros_like(output_data, dtype=bool)
         is_valid[slicers.map(attrgetter("index"))] = True
-        out_array = ma.array(data=output_data, dtype=output_data.dtype, mask=~is_valid)
+        out_array = ma.array(
+            data=output_data, dtype=output_data.dtype, mask=~is_valid,
+        )
         return trim_str_dtype(out_array)
 
 
