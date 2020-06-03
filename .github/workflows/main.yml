@@ -7,12 +7,16 @@ on:
 
 jobs:
   pre-commit:
+    name: pre-commit (${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.8]
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v1
         with:
-          python-version: 3.x
+          python-version: ${{ matrix.python-version }}
       - run: |
           pip install pre-commit
           pre-commit run --all-files
@@ -33,12 +37,16 @@ jobs:
           pytest -nauto -v tests
 
   build:
+    name: build (${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.8]
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v1
         with:
-          python-version: 3.x
+          python-version: ${{ matrix.python-version }}
       - run: |
           pip install wheel
           python setup.py sdist bdist_wheel
