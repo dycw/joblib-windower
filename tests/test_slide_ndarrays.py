@@ -10,8 +10,10 @@ from typing import Type
 from typing import Union
 
 from attr import attrs
+from functional_itertools import CDict
 from functional_itertools import CList
 from functional_itertools import CSet
+from functional_itertools import CTuple
 from numpy import arange
 from numpy import array
 from numpy import bool_
@@ -30,7 +32,6 @@ from pandas import Float64Index
 from pandas import Index
 from pandas import Int64Index
 from pandas import Series
-from pytest import mark
 from pytest import raises
 
 from joblib_windower.errors import InvalidLagError
@@ -62,6 +63,7 @@ from joblib_windower.slide_ndarrays import str_dtype_to_width
 from joblib_windower.slide_ndarrays import timedelta64ns
 from joblib_windower.slide_ndarrays import trim_str_dtype
 from joblib_windower.slide_ndarrays import width_to_str_dtype
+from tests import parametrize
 
 
 @attrs(auto_attribs=True)
@@ -137,7 +139,7 @@ SLICE_CASES = CList(
 )
 
 
-@mark.parametrize(
+@parametrize(
     "x, y, expected",
     [
         (array([0, 1, 2], dtype=int), array([0, 1, 2], dtype=int), True),
@@ -153,7 +155,7 @@ def test_are_equal_arrays(x: ndarray, y: ndarray, expected: bool) -> None:
     assert are_equal_arrays(x, y) == expected
 
 
-@mark.parametrize(
+@parametrize(
     "x, y, check_names, expected",
     [
         (Index(list("abc")), Index(list("abc")), True, True),
@@ -172,7 +174,7 @@ def test_are_equal_indices(
     assert are_equal_indices(x, y, check_names=check_names) == expected
 
 
-@mark.parametrize(
+@parametrize(
     "x, expected",
     [(None, None), (ones(3), 3), (ones((3, 4)), 3), (ones((3, 4, 5)), 3)],
 )
@@ -180,7 +182,7 @@ def test_get_maybe_ndarray_length(x: Any, expected: Optional[int]) -> None:
     assert get_maybe_ndarray_length(x) == expected
 
 
-@mark.parametrize(
+@parametrize(
     "value, expected",
     PRIMITIVE_TO_DTYPE_CASES.map(
         lambda x: (x.value, OutputSpec(dtype=x.dtype, shape=(5,))),
@@ -281,7 +283,7 @@ def test_get_output_spec(value: Any, expected: OutputSpec) -> None:
     assert get_output_spec(value, 5) == expected
 
 
-@mark.parametrize(
+@parametrize(
     "callable_, expected",
     [
         (
@@ -506,7 +508,7 @@ def test_get_slicers(
     assert result == expected
 
 
-@mark.parametrize(
+@parametrize(
     "callable_, error",
     [
         (partial(get_slicers, None), InvalidLengthError),
@@ -529,19 +531,19 @@ def test_get_slicers_error(
         callable_()
 
 
-@mark.parametrize("x, expected", [(None, False), (0, True)])
+@parametrize("x, expected", [(None, False), (0, True)])
 def test_is_not_none(x: Any, expected: bool) -> None:
     assert is_not_none(x) == expected
 
 
-@mark.parametrize("case", SLICE_CASES)
+@parametrize("case", SLICE_CASES)
 def test_maybe_slice(case: SliceCase) -> None:
     assert are_equal_objects(
         maybe_slice(case.value, int_or_slice=case.int_or_slice), case.expected,
     )
 
 
-@mark.parametrize(
+@parametrize(
     "x, expected",
     [
         (CSet({dtype(int), dtype(float)}), CSet({dtype(int), dtype(float)})),
@@ -555,7 +557,7 @@ def test_merge_dtypes(x: CSet[dtype], expected: CSet[dtype]) -> None:
     assert merge_dtypes(x) == expected
 
 
-@mark.parametrize(
+@parametrize(
     "x, expected",
     [
         (CSet({dtype("U1")}), dtype("U1")),
@@ -566,7 +568,7 @@ def test_merge_str_dtypes(x: CSet[dtype], expected: dtype) -> None:
     assert merge_str_dtypes(x) == expected
 
 
-@mark.parametrize(
+@parametrize(
     "obj, expected",
     [
         (Int64Index([0, 1, 2]), array([0, 1, 2], dtype=int)),
@@ -602,18 +604,20 @@ def test_pandas_obj_to_array(obj: Any, expected: ndarray) -> None:
     assert are_equal_objects(pandas_obj_to_ndarray(obj), expected)
 
 
-@mark.parametrize("case", PRIMITIVE_TO_DTYPE_CASES)
+@parametrize("case", PRIMITIVE_TO_DTYPE_CASES)
 def test_primitive_to_dtype(case: PrimitiveToDtypeCase) -> None:
     assert primitive_to_dtype(case.value) == case.dtype
 
 
-@mark.parametrize(
+@parametrize(
     "slicer, arguments, expected",
     [
         (
             Slicer(index=0, int_or_slice=0),
-            Arguments(args=(arange(5),)),
-            Sliced(index=0, arguments=Arguments(args=(0,))),
+            Arguments(args=CTuple([arange(5)]), kwargs=CDict()),
+            Sliced(
+                index=0, arguments=Arguments(args=CTuple([0]), kwargs=CDict()),
+            ),
         ),
     ],
 )
@@ -623,12 +627,12 @@ def test_slice_arguments(
     assert slice_arguments(slicer, arguments=arguments) == expected
 
 
-@mark.parametrize("x, expected", [(dtype("U1"), 1), (dtype("U10"), 10)])
+@parametrize("x, expected", [(dtype("U1"), 1), (dtype("U10"), 10)])
 def test_str_dtype_to_width(x: dtype, expected: int) -> None:
     assert str_dtype_to_width(x) == expected
 
 
-@mark.parametrize(
+@parametrize(
     "x, expected",
     [
         (array([0, 1, 2], dtype=int), array([0, 1, 2], dtype=int)),
@@ -642,7 +646,7 @@ def test_trim_str_dtype(x: ndarray, expected: ndarray) -> None:
     assert are_equal_arrays(trim_str_dtype(x), expected)
 
 
-@mark.parametrize(
+@parametrize(
     "width, expected", [(1, dtype("U1")), (2, dtype("U2"))],
 )
 def test_width_to_str_dtype(width: int, expected: dtype) -> None:
