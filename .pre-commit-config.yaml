@@ -71,7 +71,6 @@ repos:
           pandas >= 1.0,
         ]
 
-
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v3.1.0
     hooks:
