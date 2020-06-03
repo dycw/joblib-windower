@@ -10,8 +10,10 @@ from typing import Type
 from typing import Union
 
 from attr import attrs
+from functional_itertools import CDict
 from functional_itertools import CList
 from functional_itertools import CSet
+from functional_itertools import CTuple
 from numpy import arange
 from numpy import array
 from numpy import bool_
@@ -612,8 +614,10 @@ def test_primitive_to_dtype(case: PrimitiveToDtypeCase) -> None:
     [
         (
             Slicer(index=0, int_or_slice=0),
-            Arguments(args=(arange(5),)),
-            Sliced(index=0, arguments=Arguments(args=(0,))),
+            Arguments(args=CTuple([arange(5)]), kwargs=CDict()),
+            Sliced(
+                index=0, arguments=Arguments(args=CTuple([0]), kwargs=CDict()),
+            ),
         ),
     ],
 )

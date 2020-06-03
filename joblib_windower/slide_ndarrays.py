@@ -19,7 +19,6 @@ from typing import Union
 import joblib
 import numpy
 from atomic_write_path import atomic_write_path
-from attr import attrib
 from attr import attrs
 from functional_itertools import CAttrs
 from functional_itertools import CDict
@@ -74,24 +73,29 @@ datetime64ns = dtype("datetime64[ns]")
 timedelta64ns = dtype("timedelta64[ns]")
 
 
-@attrs(eq=False)
+@attrs(auto_attribs=True, eq=False)
 class Arguments(CAttrs[T]):
-    args: CTuple[T] = attrib(default=(), converter=CTuple)
-    kwargs: CDict[str, T] = attrib(default={}, converter=CDict)
+    args: CTuple[T]
+    kwargs: CDict[str, T]
 
-    def __eq__(self: Arguments, other: Arguments) -> bool:
-        return (
-            (len(self.args) == len(other.args))
-            and CIterable(self.args)
-            .zip(other.args)
-            .starmap(are_equal_objects)
-            .all()
-            and (set(self.kwargs) == set(other.kwargs))
-            and CDict(self.kwargs)
-            .map_items(lambda k, v: (k, are_equal_objects(v, other.kwargs[k])))
-            .values()
-            .all()
-        )
+    def __eq__(self: Arguments, other: Any) -> bool:
+        if isinstance(other, Arguments):
+            return (
+                (len(self.args) == len(other.args))
+                and CIterable(self.args)
+                .zip(other.args)
+                .starmap(are_equal_objects)
+                .all()
+                and (set(self.kwargs) == set(other.kwargs))
+                and CDict(self.kwargs)
+                .map_items(
+                    lambda k, v: (k, are_equal_objects(v, other.kwargs[k])),
+                )
+                .values()
+                .all()
+            )
+        else:
+            return NotImplemented
 
     def all_values(self: Arguments[T]) -> CTuple[T]:
         return self.args.chain(self.kwargs.values())
@@ -128,6 +132,7 @@ def apply_sliced(
         return result
     else:
         output[sliced.index] = result
+        return None
 
 
 def are_equal_arrays(x: ndarray, y: ndarray) -> bool:
@@ -309,7 +314,7 @@ def maybe_slice(x: Any, *, int_or_slice: Union[int, slice]) -> Any:
 def merge_dtypes(x: CSet[dtype]) -> CSet[dtype]:
     not_str, is_str = x.partition(lambda x: issubdtype(x, str_))
     if is_str:
-        return not_str.add(merge_str_dtypes(is_str))
+        return not_str.union([merge_str_dtypes(is_str)])
     else:
         return not_str
 
@@ -392,10 +397,10 @@ def slide_ndarrays(
     temp_dir: Union[Path, str] = TEMP_DIR,
     str_len_factor: int = DEFAULT_STR_LEN_FACTOR,
     parallel: bool = False,
-    processes: int = CPU_COUNT,
+    processes: Optional[int] = CPU_COUNT,
     **kwargs: Any,
 ) -> MaskedArray:
-    arguments = Arguments(args=args, kwargs=kwargs)
+    arguments: Arguments = Arguments(args=CTuple(args), kwargs=CDict(kwargs))
     length = get_unique_ndarray_length(arguments)
     slicers = get_slicers(
         length, window=window, lag=lag, step=step, min_frac=min_frac,
@@ -409,7 +414,7 @@ def slide_ndarrays(
         maybe_replace_by_memmap_td = partial(
             maybe_replace_by_memmap, temp_dir=td,
         )
-        replaced = Arguments(
+        replaced: Arguments = Arguments(
             args=arguments.args.enumerate().starmap(maybe_replace_by_memmap_td),
             kwargs=arguments.kwargs.map_items(
                 lambda k, v: (k, maybe_replace_by_memmap_td(k, v)),
@@ -446,7 +451,10 @@ def slide_ndarrays(
 
 
 def str_dtype_to_width(x: dtype) -> int:
-    return int(search(r"^<U(\d+)$", x.str).group(1))
+    if match := search(r"^<U(\d+)$", x.str):
+        return int(match.group(1))
+    else:
+        raise ValueError("Expected the regex to match; it did not")
 
 
 def trim_str_dtype(x: NdarrayOrMaskedArray) -> NdarrayOrMaskedArray:
