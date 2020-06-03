@@ -13,6 +13,7 @@ from typing import TypeVar
 from typing import Union
 
 from attr import attrs
+from functional_itertools import CDict
 from functional_itertools import CIterable
 from functional_itertools import CList
 from functional_itertools import CTuple
@@ -257,7 +258,7 @@ def slide_ndframes(
     processes: Optional[int] = CPU_COUNT,
     **kwargs: Any,
 ) -> Union[Series, DataFrame]:
-    arguments: Arguments = Arguments(args=args, kwargs=kwargs)
+    arguments: Arguments = Arguments(args=CTuple(args), kwargs=CDict(kwargs))
     index = get_maybe_unique_ndframe_index(arguments)
     maybe_name = get_maybe_unique_series_name(arguments)
     maybe_columns = get_maybe_unique_dataframe_columns(arguments)
