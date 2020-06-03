@@ -17,7 +17,6 @@ from pandas import DataFrame
 from pandas import Index
 from pandas import Series
 from pandas.testing import assert_index_equal
-from pytest import mark
 from pytest import raises
 
 from joblib_windower.errors import DistinctIndicesError
@@ -29,9 +28,10 @@ from joblib_windower.slide_ndframes import get_maybe_ndframe_index
 from joblib_windower.slide_ndframes import get_ndframe_spec
 from joblib_windower.slide_ndframes import get_unique_index
 from joblib_windower.slide_ndframes import NDFrameSpec
+from tests import parametrize
 
 
-@mark.parametrize(
+@parametrize(
     "obj, expected",
     [
         (None, None),
@@ -54,7 +54,7 @@ def test_get_maybe_dataframe_columns(
         assert expected is None
 
 
-@mark.parametrize(
+@parametrize(
     "obj, expected",
     [
         (None, None),
@@ -75,7 +75,7 @@ def test_get_maybe_ndframe_index(obj: Any, expected: Optional[Index]) -> None:
         assert expected is None
 
 
-@mark.parametrize(
+@parametrize(
     "dtype, expected",
     [
         (dtype(bool), NDFrameSpec(dtype=dtype(object), masked=nan)),
@@ -94,7 +94,7 @@ def test_get_ndframe_spec(dtype: dtype, expected: NDFrameSpec) -> None:
     assert get_ndframe_spec(dtype) == expected
 
 
-@mark.parametrize(
+@parametrize(
     "indices, expected",
     [
         ([Index(list("abc"))], Index(list("abc"))),
