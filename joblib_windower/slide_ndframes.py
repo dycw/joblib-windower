@@ -77,7 +77,7 @@ def call_with_packing(
 ) -> T:
     packed = CTuple(args).grouper(3).map(pack_argument)
     is_kwargs, is_args = keys.zip(packed).partition(lambda x: x[0] is None)
-    arguments = Arguments(
+    arguments: Arguments = Arguments(
         args=is_args.map(itemgetter(1)), kwargs=is_kwargs.dict(),
     )
     return func(*arguments.args, **arguments.kwargs)
@@ -150,12 +150,12 @@ def get_maybe_unique_ndframe_index(arguments: Arguments) -> Optional[Index]:
 
 
 def get_unique_index(indices: Iterable[Index]) -> Index:
-    indices = CList(indices)
-    pairs = indices.combinations(2)
+    as_list = CList(indices)
+    pairs = as_list.combinations(2)
     if pairs.starmap(
         lambda x, y: are_equal_indices(x, y, check_names=True),
     ).all():
-        index, *_ = indices
+        index, *_ = as_list
         return index
     else:
         unequal, equal = pairs.partition(
@@ -165,7 +165,7 @@ def get_unique_index(indices: Iterable[Index]) -> Index:
             (x, y), *_ = unequal
             raise DistinctIndicesError(x, y)
         else:
-            index, *_ = indices
+            index, *_ = as_list
             return index.rename(None)
 
 
@@ -254,10 +254,10 @@ def slide_ndframes(
     temp_dir: Union[Path, str] = TEMP_DIR,
     str_len_factor: int = DEFAULT_STR_LEN_FACTOR,
     parallel: bool = False,
-    processes: int = CPU_COUNT,
+    processes: Optional[int] = CPU_COUNT,
     **kwargs: Any,
 ) -> Union[Series, DataFrame]:
-    arguments = Arguments(args=args, kwargs=kwargs)
+    arguments: Arguments = Arguments(args=args, kwargs=kwargs)
     index = get_maybe_unique_ndframe_index(arguments)
     maybe_name = get_maybe_unique_series_name(arguments)
     maybe_columns = get_maybe_unique_dataframe_columns(arguments)
